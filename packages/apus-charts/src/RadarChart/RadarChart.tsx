@@ -25,13 +25,15 @@ const RadarChart: React.FC<RadarChartProps> = ({
   seriesGlowOffsetX = 0,
   seriesGlowOffsetY = 0,
   seriesGlowOpacity = 0.75,
-  tooltip.backgroundColor = 'rgba(50, 50, 50, 0.85)', // Default to dark background
-  tooltip.textColor = '#FFFFFF', // Default to light text
-  tooltip.padding = '8px 12px',
-  tooltip.borderRadius = '4px',
-  tooltip.fontSize = '12px',
-  tooltip.offsetX = 10,
-  tooltip.offsetY = -15,
+  tooltip = {
+    backgroundColor: 'rgba(50, 50, 50, 0.85)', // Default to dark background
+    textColor: '#FFFFFF', // Default to light text
+    padding: '8px 12px',
+    borderRadius: '4px',
+    fontSize: '12px',
+    offsetX: 10,
+    offsetY: -15,
+  },
   tooltipFormat,
   showHoverPoints,
   hoverPointRadius,
@@ -55,25 +57,24 @@ const RadarChart: React.FC<RadarChartProps> = ({
   responsive = true, // Added prop to control responsiveness
   // Legend Props
   showLegend = false,
-  legend.position = 'bottom',
-  legend.title,
-  legend.titleColor,
-  legend.titleFontSize = '14px',
-  legend.titleFontFamily = 'sans-serif',
-  legend.itemColor,
-  legend.itemFontSize = '12px',
-  legend.itemFontFamily = 'sans-serif',
-  legend.swatchSize = 12,
-  legend.swatchBorderColor = 'transparent',
-  legend.swatchBorderWidth = 0,
-  legend.gap = 8, // Gap between legend items (in px)
-  legend.padding = '10px',
-  legend.clickable = false,
+  legend = {
+    position: 'bottom',
+    titleFontSize: '14px',
+    titleFontFamily: 'sans-serif',
+    itemFontSize: '12px',
+    itemFontFamily: 'sans-serif',
+    swatchSize: 12,
+    swatchBorderColor: 'transparent',
+    swatchBorderWidth: 0,
+    gap: 8, // Gap between legend items (in px)
+    padding: '10px',
+    clickable: false,
+  },
   selectedSeriesFillOpacity = 0.7,
   selectedSeriesStrokeWidth = 3,
   deselectedSeriesFillOpacity = 0.15,
   deselectedSeriesStrokeWidth = 1,
-  legend.onItemClick,
+  onLegendItemClick,
 }) => {
   const [hoveredData, _setHoveredData] = useState<HoveredDataInfo | null>(null);
   const [selectedSeriesName, setSelectedSeriesName] = useState<string | null>(null);

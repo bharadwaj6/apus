@@ -11,8 +11,7 @@ type RangeChartRendererProps = {
   svgRef: RefObject<SVGSVGElement>;
   data: RangeChartDataItem[];
   dimensions: { width: number; height: number; margin: Margin };
-  colors[0]: string;
-  colors[1]: string;
+  colors: string[];
   margin: Margin;
   showXAxis: boolean;
   showYAxis: boolean;
@@ -29,8 +28,7 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
   svgRef,
   data,
   dimensions,
-  colors[0],
-  colors[1],
+  colors,
   margin,
   showXAxis,
   showYAxis,
@@ -174,8 +172,7 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
       });
   }, [
     data,
-    colors[0],
-    colors[1],
+    colors,
     margin,
     dimensions,
     showXAxis,

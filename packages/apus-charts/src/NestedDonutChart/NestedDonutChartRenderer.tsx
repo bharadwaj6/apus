@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as d3 from 'd3';
 import { NestedDonutChartProps, NestedDonutLevelData } from './types';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
 import { useTooltip } from '../hooks/useTooltip';
 
 interface NestedDonutChartRendererProps extends NestedDonutChartProps {
-  legend.position?: 'top' | 'right' | 'bottom' | 'left';
+  legend?: LegendConfig;
   theme?: 'light' | 'dark';
   className?: string;
   style?: React.CSSProperties;
@@ -14,7 +16,7 @@ interface NestedDonutChartRendererProps extends NestedDonutChartProps {
 }
 
 export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> = ({
-  legend.position = 'bottom',
+  legend = { position: 'bottom' },
   theme = 'light',
   className = '',
   style,
@@ -32,11 +34,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
   outerRadius: outerRadiusProp,
   cornerRadius = 4,
   padAngle = 0.02,
-  tooltip.backgroundColor,
-  tooltip.textColor,
-  tooltip.padding,
-  tooltip.borderRadius,
-  tooltip.fontSize,
+  tooltip = {},
 }) => {
   const [activeSlices, setActiveSlices] = useState<Set<string>>(new Set());
   const svgRef = useRef<SVGSVGElement>(null);

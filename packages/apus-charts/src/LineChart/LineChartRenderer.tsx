@@ -5,6 +5,7 @@
 import React, { useEffect, RefObject } from 'react';
 import * as d3 from 'd3';
 import { LineChartSeries } from './types';
+import type { LegendConfig } from '../types/legend';
 import { Margin, createGradient, addGridLines, addLegend } from '../utils/chartUtils';
 import { useTooltip } from '../hooks/useTooltip';
 
@@ -25,9 +26,7 @@ type LineChartRendererProps = {
   lineGradientColors?: string[];
   showArea: boolean;
   showLegend: boolean;
-  legend.position: 'top' | 'right' | 'bottom' | 'left';
-  legend.itemFontSize: string;
-  legend.itemColor: string;
+  legend: LegendConfig;
 };
 
 export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
@@ -47,9 +46,7 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   lineGradientColors,
   showArea,
   showLegend,
-  legend.position,
-  legend.itemFontSize,
-  legend.itemColor,
+  legend = {},
 }) => {
   const { showTooltip, hideTooltip } = useTooltip(tooltipRef, {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',

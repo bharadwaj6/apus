@@ -24,19 +24,23 @@ export const LineChart: React.FC<LineChartProps> = ({
   showXAxis = true,
   showYAxis = true,
   showGridLines = false,
-  tooltip.backgroundColor = '#333333',
-  tooltip.textColor = '#ffffff',
-  tooltip.padding = '8px',
-  tooltip.borderRadius = '4px',
-  tooltip.fontSize = '12px',
+  tooltip = {
+    backgroundColor: '#333333',
+    textColor: '#ffffff',
+    padding: '8px',
+    borderRadius: '4px',
+    fontSize: '12px',
+  },
   areaGradientColors,
   lineGradientColors,
   showArea = true,
   responsive = true,
   showLegend = false,
-  legend.position = 'bottom',
-  legend.itemFontSize = '12px',
-  legend.itemColor = '#cccccc',
+  legend = {
+    position: 'bottom',
+    itemFontSize: '12px',
+    itemColor: '#cccccc',
+  },
   ariaLabel = 'Line chart',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,9 +102,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           lineGradientColors={lineGradientColors}
           showArea={showArea}
           showLegend={showLegend}
-          legend.position={legend.position}
-          legend.itemFontSize={legend.itemFontSize}
-          legend.itemColor={legend.itemColor}
+          legend={legend}
         />
       </svg>
       <div ref={tooltipRef} className="tooltip" style={{ opacity: 0 }} />

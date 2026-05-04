@@ -7,6 +7,7 @@ import React, { useEffect, RefObject } from 'react';
 import { StackedBarChartData } from './types';
 import { Dimensions } from '../hooks/useChartDimensions';
 import { Margin, addGridLines } from '../utils/chartUtils';
+import type { LegendConfig } from '../types/legend';
 
 // Type for a segment of a stacked bar, which includes the original data object
 type StackedBarSegment = d3.SeriesPoint<StackedBarChartData>;
@@ -41,9 +42,7 @@ export interface StackedBarChartRendererProps {
   visibleKeys: string[];
   setVisibleKeys: React.Dispatch<React.SetStateAction<string[]>>;
   showLegend: boolean;
-  legend.position: 'top' | 'right' | 'bottom' | 'left';
-  legend.itemFontSize: string;
-  legend.itemColor: string;
+  legend: LegendConfig;
   barCornerRadius?: number;
   showValues?: boolean;
   valuesFontSize?: string;
@@ -72,9 +71,7 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
   visibleKeys,
   setVisibleKeys,
   showLegend,
-  legend.position,
-  legend.itemFontSize,
-  legend.itemColor,
+  legend = {},
   barCornerRadius = 0,
   showValues = false,
   valuesFontSize = '10px',
@@ -111,7 +108,7 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
     // Adjust dimensions for legend
     let legendWidth = 0;
     let legendHeight = 0;
-    const legend.padding = 10;
+    const legendPadding = 10;
     const legendItemHeight = 20; // Approximate height of a legend item
     const legendTextPadding = 5;
 

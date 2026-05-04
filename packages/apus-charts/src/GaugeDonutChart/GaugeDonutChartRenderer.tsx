@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as d3 from 'd3';
 import { GaugeDonutChartProps, GaugeDonutData } from './types';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
 import { useTooltip } from '../hooks/useTooltip';
 
 export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
-  legend.position?: 'top' | 'right' | 'bottom' | 'left';
+  legend?: LegendConfig;
   theme?: 'light' | 'dark';
   className?: string;
   style?: React.CSSProperties;
@@ -20,11 +22,7 @@ export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
     | 'quarter-top-left';
   colors?: string[];
   showTooltip?: boolean;
-  tooltip.backgroundColor?: string;
-  tooltip.textColor?: string;
-  tooltip.padding?: string;
-  tooltip.borderRadius?: string;
-  tooltip.fontSize?: string;
+  tooltip?: TooltipConfig;
   tooltipFormat?: (data: GaugeDonutData, total: number, percent: string) => string;
   enableGlow?: boolean;
   glowColor?: string;
@@ -32,7 +30,7 @@ export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
 }
 
 export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = ({
-  legend.position = 'bottom',
+  legend = { position: 'bottom' },
   theme = 'light',
   className = '',
   style,
@@ -45,11 +43,13 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
   onSliceClick,
   colors = d3.schemeCategory10,
   showTooltip = true,
-  tooltip.backgroundColor = 'rgba(0,0,0,0.85)',
-  tooltip.textColor = '#fff',
-  tooltip.padding = '8px 12px',
-  tooltip.borderRadius = '6px',
-  tooltip.fontSize = '14px',
+  tooltipConfig = {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    textColor: '#fff',
+    padding: '8px 12px',
+    borderRadius: '6px',
+    fontSize: '14px',
+  },
   tooltipFormat,
   enableGlow = false,
   glowColor,
