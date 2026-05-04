@@ -11,13 +11,15 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
   showValues,
   valueFormat,
   onSliceClick,
-  tooltipBackgroundColor = '#000000',
-  tooltipTextColor = '#FFFFFF',
-  tooltipPadding = '8px',
-  tooltipBorderRadius = '4px',
-  tooltipFontSize = '12px',
-  tooltipOffsetX = 10,
-  tooltipOffsetY = 10,
+  tooltip = {
+    backgroundColor: '#000000',
+    textColor: '#FFFFFF',
+    padding: '8px',
+    borderRadius: '4px',
+    fontSize: '12px',
+    offsetX: 10,
+    offsetY: 10,
+  },
   tooltipFormat,
   isDarkMode = false,
   enableGradients = false,
@@ -33,11 +35,11 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
   const filterIdRef = useRef<string>(`funnel-shadow-${Math.random().toString(36).substring(7)}`);
 
   const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipFormat ? 'transparent' : tooltipBackgroundColor,
-    textColor: tooltipFormat ? 'transparent' : tooltipTextColor,
-    padding: tooltipFormat ? '0px' : tooltipPadding,
-    borderRadius: tooltipBorderRadius,
-    fontSize: tooltipFontSize,
+    backgroundColor: tooltipFormat ? 'transparent' : tooltip.backgroundColor,
+    textColor: tooltipFormat ? 'transparent' : tooltip.textColor,
+    padding: tooltipFormat ? '0px' : tooltip.padding,
+    borderRadius: tooltip.borderRadius,
+    fontSize: tooltip.fontSize,
   });
 
   useEffect(() => {
@@ -144,11 +146,11 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
               ? tooltipFormat(d)
               : `
                 <div style="
-                  background-color: ${tooltipBackgroundColor};
-                  color: ${tooltipTextColor};
-                  padding: ${tooltipPadding};
-                  border-radius: ${tooltipBorderRadius};
-                  font-size: ${tooltipFontSize};
+                  background-color: ${tooltip.backgroundColor};
+                  color: ${tooltip.textColor};
+                  padding: ${tooltip.padding};
+                  border-radius: ${tooltip.borderRadius};
+                  font-size: ${tooltip.fontSize};
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                   text-align: center;
                 ">
@@ -157,7 +159,7 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
                 </div>
                 `;
 
-            tooltip.showTooltip(tooltipContent, x + tooltipOffsetX, y + tooltipOffsetY);
+            tooltip.showTooltip(tooltipContent, x + tooltip.offsetX, y + tooltip.offsetY);
           }
         })
         .on('mouseleave', function () {
@@ -203,8 +205,8 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
     valueFormat,
     onSliceClick,
     tooltip,
-    tooltipOffsetX,
-    tooltipOffsetY,
+    tooltip.offsetX,
+    tooltip.offsetY,
     tooltipFormat,
     isDarkMode,
     enableGradients,
@@ -213,11 +215,11 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
     segmentShadowBlur,
     segmentShadowOffsetX,
     segmentShadowOffsetY,
-    tooltipBackgroundColor,
-    tooltipTextColor,
-    tooltipPadding,
-    tooltipBorderRadius,
-    tooltipFontSize,
+    tooltip.backgroundColor,
+    tooltip.textColor,
+    tooltip.padding,
+    tooltip.borderRadius,
+    tooltip.fontSize,
   ]);
 
   return (

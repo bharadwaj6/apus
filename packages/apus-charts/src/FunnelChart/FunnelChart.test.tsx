@@ -63,7 +63,7 @@ describe('FunnelChart', () => {
   it('renders tooltip on mouse enter and hides on mouse leave', async () => {
     vi.useFakeTimers();
     const { container } = render(
-      <FunnelChart data={mockData} tooltipBackgroundColor="red" tooltipTextColor="white" />,
+      <FunnelChart data={mockData} tooltip={...tooltip, backgroundColor:"red" textColor:"white" />,
     );
     const path = container.querySelector('.funnel-segment path');
 
