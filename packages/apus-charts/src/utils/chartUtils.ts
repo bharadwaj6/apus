@@ -3,13 +3,8 @@
  * @description Utility functions for chart components
  */
 import * as d3 from 'd3';
-
-export type Margin = {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-};
+import type { Margin } from '../types/base';
+import type { LegendConfig } from '../types/legend';
 
 /**
  * Creates a gradient definition for a chart
@@ -86,7 +81,7 @@ export const addGridLines = (
     const xGrid = g
       .append('g')
       .attr('class', 'grid-line')
-      .attr('transform', `translate(0,${height})`)
+      .attr('transform', `translate(0, ${height})`)
       .call(
         d3
           .axisBottom(x)
@@ -104,32 +99,34 @@ export const addGridLines = (
  * @param g - D3 selection of the group element
  * @param labels - Array of labels for the legend
  * @param colors - Array of colors or a single color for the legend
- * @param position - Position of the legend
+ * @param legend - LegendConfig object
  * @param innerWidth - Inner width of the chart
  * @param innerHeight - Inner height of the chart
  * @param margin - Margins of the chart
- * @param fontSize - Font size for the legend
- * @param fontColor - Font color for the legend
  * @param gradientIds - Optional array of gradient IDs
  */
 export const addLegend = (
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
+  g: d3.Selection<SVGGElement , unknown, null, undefined>,
   labels: string[],
   colors: string | string[],
-  position: 'top' | 'right' | 'bottom' | 'left',
+  legend: LegendConfig | undefined,
   innerWidth: number,
   innerHeight: number,
   margin: Margin,
-  fontSize: string,
-  fontColor: string,
   gradientIds?: string[],
 ): void => {
   if (!labels || labels.length === 0) return;
 
+  const legendConfig = legend || {};
+  const position = legendConfig.position || 'bottom';
+  const fontSize = legendConfig.itemFontSize || '12px';
+  const fontColor = legendConfig.itemColor || '#333';
+  const swatchSize = legendConfig.swatchSize || 16;
+  const gap = legendConfig.gap || 8;
+
   // Calculate legend dimensions and position
-  const legendItemHeight = 20;
+  const legendItemHeight = swatchSize + gap;
   const legendItemWidth = 80;
-  const legendPadding = 10;
   const legendHeight = labels.length * legendItemHeight;
 
   let legendX = 0;
@@ -142,21 +139,21 @@ export const addLegend = (
       legendY = -margin.top / 2;
       break;
     case 'right':
-      legendX = innerWidth + legendPadding;
+      legendX = innerWidth + gap;
       legendY = innerHeight / 2 - legendHeight / 2;
       break;
     case 'bottom':
       legendX = innerWidth / 2 - (legendItemWidth * labels.length) / 2;
-      legendY = innerHeight + legendPadding + 15; // Added extra padding to avoid x-axis overlap
+      legendY = innerHeight + gap + 15; // Added extra padding to avoid x-axis overlap
       break;
     case 'left':
-      legendX = -margin.left + legendPadding;
+      legendX = -margin.left + gap;
       legendY = innerHeight / 2 - legendHeight / 2;
       break;
   }
 
   // Create legend group
-  const legend = g
+  const legendGroup = g
     .append('g')
     .attr('class', 'legend')
     .attr('transform', `translate(${legendX}, ${legendY})`);
@@ -169,13 +166,13 @@ export const addLegend = (
     const itemX = isHorizontal ? i * legendItemWidth : 0;
     const itemY = isHorizontal ? 0 : i * legendItemHeight;
 
-    const legendItem = legend.append('g').attr('transform', `translate(${itemX}, ${itemY})`);
+    const legendItem = legendGroup.append('g').attr('transform', `translate(${itemX}, ${itemY})`);
 
     // Add colored rectangle
     legendItem
       .append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
+      .attr('width', swatchSize)
+      .attr('height', swatchSize)
       .attr('fill', () => {
         if (gradientIds && gradientIds[i]) {
           return `url(#${gradientIds[i]})`;
@@ -186,8 +183,8 @@ export const addLegend = (
     // Add text label
     legendItem
       .append('text')
-      .attr('x', 20)
-      .attr('y', 12)
+      .attr('x', swatchSize + gap)
+      .attr('y', swatchSize / 2 + 4)
       .style('font-size', fontSize)
       .style('fill', fontColor)
       .text(label);

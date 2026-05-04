@@ -4,7 +4,7 @@ import { NestedDonutChartProps, NestedDonutLevelData } from './types';
 import { useTooltip } from '../hooks/useTooltip';
 
 interface NestedDonutChartRendererProps extends NestedDonutChartProps {
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
+  legend.position?: 'top' | 'right' | 'bottom' | 'left';
   theme?: 'light' | 'dark';
   className?: string;
   style?: React.CSSProperties;
@@ -14,7 +14,7 @@ interface NestedDonutChartRendererProps extends NestedDonutChartProps {
 }
 
 export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> = ({
-  legendPosition = 'bottom',
+  legend.position = 'bottom',
   theme = 'light',
   className = '',
   style,
@@ -32,22 +32,22 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
   outerRadius: outerRadiusProp,
   cornerRadius = 4,
   padAngle = 0.02,
-  tooltipBackgroundColor,
-  tooltipTextColor,
-  tooltipPadding,
-  tooltipBorderRadius,
-  tooltipFontSize,
+  tooltip.backgroundColor,
+  tooltip.textColor,
+  tooltip.padding,
+  tooltip.borderRadius,
+  tooltip.fontSize,
 }) => {
   const [activeSlices, setActiveSlices] = useState<Set<string>>(new Set());
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor || 'rgba(0,0,0,0.85)',
-    textColor: tooltipTextColor || '#fff',
-    padding: tooltipPadding || '8px 12px',
-    borderRadius: tooltipBorderRadius || '6px',
-    fontSize: tooltipFontSize || '14px',
+    backgroundColor: tooltip.backgroundColor || 'rgba(0,0,0,0.85)',
+    textColor: tooltip.textColor || '#fff',
+    padding: tooltip.padding || '8px 12px',
+    borderRadius: tooltip.borderRadius || '6px',
+    fontSize: tooltip.fontSize || '14px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
     zIndex: 1000,
   });
@@ -57,7 +57,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
   }, [tooltip]);
 
   const handleSliceClick = useCallback(
-    (level: number, data: { label: string; value: number; color?: string }) => {
+    (level: number, data: { label: string; value: number; colors?: string }) => {
       const sliceKey = `${level}-${data.label}`;
       const newActiveSlices = new Set(activeSlices);
 
@@ -118,10 +118,10 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
             .attr('in', 'SourceGraphic')
             .attr('stdDeviation', glowBlur)
             .attr('result', 'coloredBlur');
-          // Use feFlood to set the color, defaulting to slice color if glowColor is not provided
+          // Use feFlood to set the colors, defaulting to slice colors if glowColor is not provided
           filter
             .append('feFlood')
-            .attr('flood-color', glowColor || 'currentColor') // Use currentColor or provided color
+            .attr('flood-colors', glowColor || 'currentColor') // Use currentColor or provided colors
             .attr('result', 'glowColor');
           filter
             .append('feComposite')
@@ -152,11 +152,11 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
         .attr('class', `arc-${levelIndex}`)
         .attr('d', arcGen)
         .attr('fill', (d, i) => {
-          // Use provided colors or a default D3 color scheme
+          // Use provided colors or a default D3 colors scheme
           if (colors && colors[levelIndex] && colors[levelIndex][i]) {
             return colors[levelIndex][i];
           }
-          return d3.schemeCategory10[i % 10]; // Default D3 color scheme
+          return d3.schemeCategory10[i % 10]; // Default D3 colors scheme
         })
         .attr('stroke', theme === 'dark' ? '#333' : '#fff')
         .attr('stroke-width', 1)
@@ -245,11 +245,11 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
 
   const containerStyle: React.CSSProperties = {
     display: 'flex',
-    flexDirection: legendPosition === 'right' || legendPosition === 'left' ? 'row' : 'column',
+    flexDirection: legend.position === 'right' || legend.position === 'left' ? 'row' : 'column',
     gap: '1rem',
     padding: '1rem',
     backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    color: theme === 'dark' ? '#ffffff' : '#000000',
+    colors: theme === 'dark' ? '#ffffff' : '#000000',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     ...style,
@@ -269,13 +269,13 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
     padding: '0.5rem',
     backgroundColor: theme === 'dark' ? '#2a2a2a' : '#f5f5f5',
     borderRadius: '4px',
-    maxHeight: legendPosition === 'right' || legendPosition === 'left' ? '100%' : '200px',
+    maxHeight: legend.position === 'right' || legend.position === 'left' ? '100%' : '200px',
     overflowY: 'auto',
   };
 
   return (
     <div className={`chart-container ${className}`} style={containerStyle}>
-      {legendPosition === 'top' && (
+      {legend.position === 'top' && (
         <div style={legendStyle}>
           {levels.map((level, levelIdx) => (
             <div key={levelIdx} style={{ marginBottom: '0.5rem' }}>
@@ -302,7 +302,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                         width: '12px',
                         height: '12px',
                         backgroundColor:
-                          item.color ||
+                          item.colors ||
                           d3.schemeCategory10[
                             levelIdx * level.length + (level.indexOf(item) % 10)
                           ] ||
@@ -314,7 +314,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        color: theme === 'dark' ? '#fff' : '#000',
+                        colors: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -332,7 +332,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
         <div ref={tooltipRef} className="nested-donut-tooltip"></div>
       </div>
 
-      {legendPosition === 'bottom' && (
+      {legend.position === 'bottom' && (
         <div style={legendStyle}>
           {levels.map((level, levelIdx) => (
             <div key={levelIdx} style={{ marginBottom: '0.5rem' }}>
@@ -359,7 +359,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                         width: '12px',
                         height: '12px',
                         backgroundColor:
-                          item.color ||
+                          item.colors ||
                           d3.schemeCategory10[
                             levelIdx * level.length + (level.indexOf(item) % 10)
                           ] ||
@@ -371,7 +371,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        color: theme === 'dark' ? '#fff' : '#000',
+                        colors: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -384,7 +384,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
         </div>
       )}
 
-      {legendPosition === 'left' && (
+      {legend.position === 'left' && (
         <div style={legendStyle}>
           {levels.map((level, levelIdx) => (
             <div key={levelIdx} style={{ marginBottom: '0.5rem' }}>
@@ -411,7 +411,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                         width: '12px',
                         height: '12px',
                         backgroundColor:
-                          item.color ||
+                          item.colors ||
                           d3.schemeCategory10[
                             levelIdx * level.length + (level.indexOf(item) % 10)
                           ] ||
@@ -423,7 +423,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        color: theme === 'dark' ? '#fff' : '#000',
+                        colors: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -436,7 +436,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
         </div>
       )}
 
-      {legendPosition === 'right' && (
+      {legend.position === 'right' && (
         <div style={legendStyle}>
           {levels.map((level, levelIdx) => (
             <div key={levelIdx} style={{ marginBottom: '0.5rem' }}>
@@ -463,7 +463,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                         width: '12px',
                         height: '12px',
                         backgroundColor:
-                          item.color ||
+                          item.colors ||
                           d3.schemeCategory10[
                             levelIdx * level.length + (level.indexOf(item) % 10)
                           ] ||
@@ -475,7 +475,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        color: theme === 'dark' ? '#fff' : '#000',
+                        colors: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}

@@ -48,7 +48,7 @@ describe('BarChart', () => {
   });
 
   it('applies a single color to all bars', () => {
-    const { container } = render(<BarChart data={mockData} color="blue" />);
+    const { container } = render(<BarChart data={mockData} colors={['blue']} />);
     const svg = container.querySelector('svg');
     expect(svg).toBeInTheDocument();
     if (svg) {
@@ -61,7 +61,7 @@ describe('BarChart', () => {
 
   it('applies an array of colors to bars cyclically', () => {
     const colors = ['red', 'green', 'blue'];
-    const { container } = render(<BarChart data={mockData} color={colors} />);
+    const { container } = render(<BarChart data={mockData} colors={colors} />);
     const svg = container.querySelector('svg');
     expect(svg).toBeInTheDocument();
     if (svg) {

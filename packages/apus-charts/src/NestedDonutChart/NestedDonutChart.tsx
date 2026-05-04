@@ -28,10 +28,10 @@ const NestedDonutChartInternal: React.FC<NestedDonutChartProps> = ({
 
   // For each level, compute pie/arcs
   const rings = levels.map(
-    (levelData: { label: string; value: number; color?: string }[], idx: number) => {
+    (levelData: { label: string; value: number; colors?: string }[], idx: number) => {
       const pie = d3
-        .pie<{ label: string; value: number; color?: string }>()
-        .value((d: { label: string; value: number; color?: string }) => d.value)
+        .pie<{ label: string; value: number; colors?: string }>()
+        .value((d: { label: string; value: number; colors?: string }) => d.value)
         .sort(null);
       const arcData = pie(levelData);
       const outerRadius = ringWidth * (levels.length - idx);
@@ -45,7 +45,7 @@ const NestedDonutChartInternal: React.FC<NestedDonutChartProps> = ({
             : [...d3.schemeTableau10, ...d3.schemeSet2, ...d3.schemeSet3],
         );
       const arcGen = d3
-        .arc<d3.PieArcDatum<{ label: string; value: number; color?: string }>>()
+        .arc<d3.PieArcDatum<{ label: string; value: number; colors?: string }>>()
         .innerRadius(innerRadius)
         .outerRadius(outerRadius)
         .cornerRadius(10)
@@ -63,7 +63,7 @@ const NestedDonutChartInternal: React.FC<NestedDonutChartProps> = ({
         left: tooltip.x + 12,
         top: tooltip.y + 12,
         background: 'rgba(0,0,0,0.85)',
-        color: '#fff',
+        colors: '#fff',
         padding: '8px 12px',
         borderRadius: 6,
         fontSize: 14,
@@ -92,7 +92,7 @@ const NestedDonutChartInternal: React.FC<NestedDonutChartProps> = ({
                   <path
                     key={d.data.label}
                     d={ring.arcGen(d) || undefined}
-                    fill={d.data.color || ring.colorScale(d.data.label)}
+                    fill={d.data.colors || ring.colorScale(d.data.label)}
                     stroke="#fff"
                     strokeWidth={2}
                     opacity={highlightLabel ? (isHighlighted ? 1 : 0.3) : 1}

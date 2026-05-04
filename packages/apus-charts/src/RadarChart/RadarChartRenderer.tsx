@@ -216,9 +216,9 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
               data-testid={`series-path-${series.name}`}
               key={series.name}
               d={pathData || ''}
-              stroke={series.color || 'currentColor'}
+              stroke={series.colors || 'currentColor'}
               strokeWidth={currentStrokeWidth}
-              fill={series.color || 'transparent'}
+              fill={series.colors || 'transparent'}
               fillOpacity={currentFillOpacity}
               style={{
                 transition: 'stroke-width 0.2s ease-in-out, fill-opacity 0.2s ease-in-out',
@@ -261,7 +261,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                           y: y, // SVG y position
                           tooltipX: tooltipX, // Relative X for HTML tooltip
                           tooltipY: tooltipY, // Relative Y for HTML tooltip
-                          color: series.color, // Pass series color
+                          colors: series.colors, // Pass series colors
                         });
                       }
                     }
@@ -290,7 +290,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                   r={hoverPointRadius}
                   fill={
                     showHoverPoints
-                      ? hoverPointFill || series.color || 'rgba(0,0,0,0.1)'
+                      ? hoverPointFill || series.colors || 'rgba(0,0,0,0.1)'
                       : 'transparent'
                   }
                   stroke={showHoverPoints ? hoverPointStroke : 'none'}
@@ -308,7 +308,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                           y: y, // SVG y position
                           tooltipX: tooltipX, // Relative X for HTML tooltip
                           tooltipY: tooltipY, // Relative Y for HTML tooltip
-                          color: series.color, // Pass series color
+                          colors: series.colors, // Pass series colors
                         });
                       }
                     }

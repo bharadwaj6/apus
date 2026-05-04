@@ -1,3 +1,6 @@
+import type { BaseChartProps } from '../types/base';
+import type { TooltipConfig } from '../types/tooltip';
+
 export interface RangeChartDataItem {
   day: string;
   range1: {
@@ -10,19 +13,9 @@ export interface RangeChartDataItem {
   };
 }
 
-export interface RangeChartProps {
+export interface RangeChartProps extends BaseChartProps {
   data: RangeChartDataItem[];
-  width?: number;
-  height?: number;
-  responsive?: boolean;
-  color1?: string;
-  color2?: string;
-  margin?: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
+  colors?: string[]; // [color1, color2]
   showXAxis?: boolean;
   showYAxis?: boolean;
   showGridLines?: boolean;
@@ -30,4 +23,5 @@ export interface RangeChartProps {
   yAxisTextColor?: string;
   axisLineColor?: string;
   yAxisTicks?: number;
+  tooltip?: TooltipConfig;
 }

@@ -3,6 +3,10 @@
  * @description Type definitions for RadarChart component
  */
 
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export interface RadarChartDataPoint {
   axis: string;
   value: number;
@@ -68,13 +72,12 @@ export interface HoveredDataInfo {
   color?: string; // Color of the hovered series
 }
 
-export interface RadarChartProps {
+export type RadarChartProps = BaseChartProps & {
   data: RadarChartSeries[];
   size?: number; // Overall size of the chart
   axesLabels: string[]; // Labels for each axis, e.g., ['Strength', 'Dexterity', ...]
   maxValue?: number; // The maximum value any data point can take (for scaling)
   levels?: number; // Number of concentric circles/polygons for the grid
-  className?: string; // Optional className for the main SVG container
   showGrid?: boolean;
   showAxesLabels?: boolean;
   showTooltips?: boolean;
@@ -93,13 +96,7 @@ export interface RadarChartProps {
   seriesGlowOpacity?: number;
 
   // --- Tooltip Customization (for HTML Tooltip) ---
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
-  tooltipOffsetX?: number; // Additional X offset for HTML tooltip
-  tooltipOffsetY?: number; // Additional Y offset for HTML tooltip (e.g., to appear above cursor)
+  tooltip?: TooltipConfig;
   tooltipFormat?: (data: HoveredDataInfo) => string; // Custom function to format tooltip HTML content
 
   // --- Hover Points Customization ---
@@ -139,23 +136,10 @@ export interface RadarChartProps {
 
   // --- Interactivity ---
   hoverTargetRadius?: number; // Radius of invisible hover circles
-  responsive?: boolean;
 
   // Legend Props
   showLegend?: boolean;
-  legendPosition?: 'top' | 'bottom' | 'right' | 'left'; // Default: 'bottom'
-  legendTitle?: string;
-  legendTitleColor?: string;
-  legendTitleFontSize?: string;
-  legendTitleFontFamily?: string;
-  legendItemColor?: string;
-  legendItemFontSize?: string;
-  legendItemFontFamily?: string;
-  legendSwatchSize?: number;
-  legendSwatchBorderColor?: string;
-  legendSwatchBorderWidth?: number;
-  legendGap?: number;
-  legendPadding?: string | number;
+  legend?: LegendConfig;
 
   // --- Interactive Legend & Highlighting ---
   clickableLegend?: boolean;

@@ -5,15 +5,18 @@
 import React, { useEffect, RefObject } from 'react';
 import * as d3 from 'd3';
 import { BarChartData } from './types';
-import { Margin, createGradient, addGridLines, addLegend } from '../utils/chartUtils';
+import { createGradient, addGridLines, addLegend } from '../utils/chartUtils';
+import type { Margin } from '../types/base';
 import { useTooltip } from '../hooks/useTooltip';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
 
 type BarChartRendererProps = {
   svgRef: RefObject<SVGSVGElement>;
   tooltipRef: RefObject<HTMLDivElement>;
   data: BarChartData[];
   dimensions: { width: number; height: number };
-  color: string | string[];
+  colors: string[];
   gradientColors?: string[];
   margin: Margin;
   showXAxis: boolean;
@@ -24,10 +27,8 @@ type BarChartRendererProps = {
   axisLineColor: string;
   yAxisTicks: number;
   showLegend: boolean;
-  legendPosition: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize: string;
-  legendFontColor: string;
-  legendLabels?: string[];
+  legend?: LegendConfig;
+  tooltip?: TooltipConfig;
 };
 
 export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
@@ -35,7 +36,7 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
   tooltipRef,
   data,
   dimensions,
-  color,
+  colors,
   gradientColors,
   margin,
   showXAxis,
@@ -46,18 +47,10 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
   axisLineColor,
   yAxisTicks,
   showLegend,
-  legendPosition,
-  legendFontSize,
-  legendFontColor,
-  legendLabels,
+  legend,
+  tooltip,
 }) => {
-  const { showTooltip, hideTooltip } = useTooltip(tooltipRef, {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    textColor: 'white',
-    padding: '8px',
-    borderRadius: '4px',
-    fontSize: '12px',
-  });
+  const { showTooltip, hideTooltip } = useTooltip(tooltipRef, tooltip || {});
 
   useEffect(() => {
     const { width: currentWidth, height: currentHeight } = dimensions;
@@ -70,7 +63,7 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
 
     // Adjust bottom margin if legend is at the bottom
     const adjustedMargin = { ...margin };
-    if (showLegend && legendPosition === 'bottom') {
+    if (showLegend && legend?.position === 'bottom') {
       adjustedMargin.bottom += 30; // Add extra space for legend
     }
 
@@ -146,7 +139,7 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
         if (gradientColors && gradientColors.length >= 2) {
           return 'url(#barGradient)';
         }
-        return Array.isArray(color) ? color[i % color.length] : color;
+        return colors[i % colors.length];
       })
       .transition() // Add transition
       .duration(750) // Duration of the transition
@@ -169,25 +162,22 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
 
     // Add legend if enabled
     if (showLegend && data.length > 0) {
-      // Determine legend labels - use provided labels or data labels
-      const labels = legendLabels || data.map((d) => d.label);
+      const labels = legend?.itemColor ? data.map((d) => d.label) : data.map((d) => d.label);
 
       addLegend(
         g,
         labels,
-        color,
-        legendPosition,
+        colors,
+        legend || {},
         innerWidth,
         innerHeight,
         adjustedMargin,
-        legendFontSize,
-        legendFontColor,
         gradientColors ? ['barGradient'] : undefined,
       );
     }
   }, [
     data,
-    color,
+    colors,
     margin,
     dimensions,
     showXAxis,
@@ -199,10 +189,7 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
     gradientColors,
     showGridLines,
     showLegend,
-    legendPosition,
-    legendFontSize,
-    legendFontColor,
-    legendLabels,
+    legend,
     svgRef,
     showTooltip,
     hideTooltip,

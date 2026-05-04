@@ -16,7 +16,7 @@ export const LineChart: React.FC<LineChartProps> = ({
   data,
   width = 600,
   height = 400,
-  lineColors = '#4682b4',
+  colors = '#4682b4',
   areaColor = 'rgba(70, 130, 180, 0.3)',
   pointColor = '#88b0de',
   margin = { top: 20, right: 30, bottom: 30, left: 40 },
@@ -24,19 +24,19 @@ export const LineChart: React.FC<LineChartProps> = ({
   showXAxis = true,
   showYAxis = true,
   showGridLines = false,
-  tooltipBackgroundColor = '#333333',
-  tooltipTextColor = '#ffffff',
-  tooltipPadding = '8px',
-  tooltipBorderRadius = '4px',
-  tooltipFontSize = '12px',
+  tooltip.backgroundColor = '#333333',
+  tooltip.textColor = '#ffffff',
+  tooltip.padding = '8px',
+  tooltip.borderRadius = '4px',
+  tooltip.fontSize = '12px',
   areaGradientColors,
   lineGradientColors,
   showArea = true,
   responsive = true,
   showLegend = false,
-  legendPosition = 'bottom',
-  legendFontSize = '12px',
-  legendFontColor = '#cccccc',
+  legend.position = 'bottom',
+  legend.itemFontSize = '12px',
+  legend.itemColor = '#cccccc',
   ariaLabel = 'Line chart',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,11 +46,11 @@ export const LineChart: React.FC<LineChartProps> = ({
   // Use custom hooks
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
   const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor,
-    textColor: tooltipTextColor,
-    padding: tooltipPadding,
-    borderRadius: tooltipBorderRadius,
-    fontSize: tooltipFontSize,
+    backgroundColor: tooltip.backgroundColor,
+    textColor: tooltip.textColor,
+    padding: tooltip.padding,
+    borderRadius: tooltip.borderRadius,
+    fontSize: tooltip.fontSize,
   });
 
   // Apply tooltip styles when component mounts
@@ -86,7 +86,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           tooltipRef={tooltipRef}
           data={data}
           dimensions={dimensions}
-          lineColors={lineColors}
+          colors={colors}
           areaColor={areaColor}
           pointColor={pointColor}
           margin={margin}
@@ -98,9 +98,9 @@ export const LineChart: React.FC<LineChartProps> = ({
           lineGradientColors={lineGradientColors}
           showArea={showArea}
           showLegend={showLegend}
-          legendPosition={legendPosition}
-          legendFontSize={legendFontSize}
-          legendFontColor={legendFontColor}
+          legend.position={legend.position}
+          legend.itemFontSize={legend.itemFontSize}
+          legend.itemColor={legend.itemColor}
         />
       </svg>
       <div ref={tooltipRef} className="tooltip" style={{ opacity: 0 }} />

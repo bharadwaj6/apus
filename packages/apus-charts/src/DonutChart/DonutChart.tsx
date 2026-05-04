@@ -6,54 +6,66 @@ import React, { useRef, useState } from 'react';
 import { DonutChartProps } from './types';
 import DonutChartRenderer from './DonutChartRenderer';
 import { useChartDimensions } from '../hooks/useChartDimensions';
-import * as d3 from 'd3';
+import { useChartTheme } from '../theme/ChartThemeContext';
+import type { TooltipConfig, LegendConfig } from '../types';
 
 /**
  * DonutChart component for rendering donut/pie charts
  */
-export const DonutChart: React.FC<DonutChartProps> = ({
-  data,
-  width = 320,
-  height = 320,
-  innerRadiusRatio = 0.7,
-  colors,
-  margin = { top: 24, right: 24, bottom: 24, left: 24 },
-  responsive = true,
-  showTooltip = true,
-  showLegend = true,
-  legendPosition = 'bottom',
-  legendFontSize = '12px',
-  legendFontColor = '#cccccc',
-  legendLabels,
-  centerLabel,
-  centerIcon,
-  extraCenterInfo,
-  ariaLabel = 'Donut chart',
-  onSliceClick,
-}) => {
+export const DonutChart: React.FC<DonutChartProps> = (props) => {
+  const theme = useChartTheme();
+
+  const {
+    data,
+    width = 320,
+    height = 320,
+    innerRadiusRatio = 0.7,
+    colors: colorsProp,
+    margin = props.margin || theme.margin,
+    responsive = true,
+    showTooltip = true,
+    tooltip,
+    showLegend = true,
+    legend,
+    centerLabel,
+    centerValue,
+    centerIcon,
+    extraCenterInfo,
+    ariaLabel = 'Donut chart',
+    onSliceClick,
+  } = props;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+  // Merge tooltip config with theme
+  const tooltipConfig: TooltipConfig = {
+    ...theme.tooltip,
+    ...tooltip,
+    show: showTooltip,
+  };
+
+  // Merge legend config with theme
+  const legendConfig: LegendConfig = {
+    ...theme.legend,
+    ...legend,
+    show: showLegend,
+  };
+
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
 
-  // Add extra width if the legend is on the right or left to accommodate it
-  const svgWidth =
-    legendPosition === 'right' || legendPosition === 'left'
-      ? dimensions.width + 200
-      : dimensions.width; // Added 200px as an estimate for legend width
-
   // Calculate radii
-  const outerRadius = Math.min(svgWidth, dimensions.height) / 2 - 8; // 8px padding
+  const outerRadius = Math.min(dimensions.width, dimensions.height) / 2 - 8;
   const innerRadius = outerRadius * innerRadiusRatio;
 
   // Prepare color scale
-  const colorScale = d3
-    .scaleOrdinal<string, string>()
-    .domain(data.map((d) => d.label))
-    .range(colors && colors.length > 0 ? colors : d3.schemeCategory10);
+  const colorScale = (label: string, i: number) => {
+    if (colorsProp && colorsProp.length > 0) return colorsProp[i % colorsProp.length];
+    return `hsl(${(i * 360) / data.length}, 70%, 50%)`;
+  };
 
-  // --- Slice visibility state ---
+  // Slice visibility state
   const [visibleLabels, setVisibleLabels] = useState<string[]>(data.map((d) => d.label));
   const toggleLabel = (label: string) => {
     setVisibleLabels((prev) =>
@@ -61,41 +73,33 @@ export const DonutChart: React.FC<DonutChartProps> = ({
     );
   };
 
-  // --- Filter data for visible slices ---
+  // Filter data for visible slices
   const filteredData = data.filter((d) => visibleLabels.includes(d.label));
-
-  // --- Prepare pie data for only visible slices ---
-  const pie = d3
-    .pie<import('./types').DonutChartData>()
-    .value((d) => d.value)
-    .sort(null);
-  const arcData = pie(filteredData);
   const total = filteredData.reduce((sum, d) => sum + d.value, 0);
 
-  // --- Layout helpers ---
-  const isLegendVertical = legendPosition === 'left' || legendPosition === 'right';
-  const isLegendFirst = legendPosition === 'top' || legendPosition === 'left';
+  // Legend rendering
+  const isLegendVertical = legendConfig.position === 'left' || legendConfig.position === 'right';
+  const isLegendFirst = legendConfig.position === 'top' || legendConfig.position === 'left';
 
-  // --- Legend rendering ---
-  const legend = showLegend ? (
+  const legendElement = legendConfig.show ? (
     <div
-      className={`donut-legend donut-legend-${legendPosition}`}
+      className={`donut-legend donut-legend-${legendConfig.position || 'bottom'}`}
       style={{
         display: 'flex',
         flexDirection: isLegendVertical ? 'column' : 'row',
         justifyContent: isLegendVertical ? 'flex-start' : 'center',
         alignItems: isLegendVertical ? 'flex-start' : 'center',
         flexWrap: 'wrap',
-        marginBottom: legendPosition === 'top' ? 16 : 0,
-        marginRight: legendPosition === 'left' ? 24 : 0,
-        marginTop: legendPosition === 'bottom' ? 16 : 0,
-        marginLeft: legendPosition === 'right' ? 24 : 0,
+        marginBottom: legendConfig.position === 'top' ? 16 : 0,
+        marginRight: legendConfig.position === 'left' ? 24 : 0,
+        marginTop: legendConfig.position === 'bottom' ? 16 : 0,
+        marginLeft: legendConfig.position === 'right' ? 24 : 0,
         paddingLeft: isLegendVertical ? 8 : 0,
         paddingTop: !isLegendVertical ? 8 : 0,
         gap: isLegendVertical ? 8 : 0,
       }}
     >
-      {data.map((d) => {
+      {data.map((d, i) => {
         const isVisible = visibleLabels.includes(d.label);
         const percent = isVisible && total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
         return (
@@ -108,8 +112,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({
               marginRight: !isLegendVertical ? 32 : 0,
               marginBottom: isLegendVertical ? 8 : 0,
               cursor: 'pointer',
-              fontSize: legendFontSize,
-              color: legendFontColor,
+              fontSize: legendConfig.itemFontSize || '12px',
+              color: legendConfig.itemColor || '#333',
               userSelect: 'none',
               minWidth: 120,
               opacity: isVisible ? 1 : 0.4,
@@ -124,7 +128,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                 display: 'inline-block',
                 width: 16,
                 height: 16,
-                background: d.color || colorScale(d.label),
+                background: d.color || colorScale(d.label, i),
                 marginRight: 10,
                 borderRadius: '50%',
                 border: '2px solid #fff',
@@ -134,27 +138,11 @@ export const DonutChart: React.FC<DonutChartProps> = ({
               }}
             />
             <span style={{ minWidth: 80, textAlign: 'left' }}>{d.label}</span>
-            <span
-              style={{
-                marginLeft: 8,
-                color: '#888',
-                fontWeight: 400,
-                minWidth: 24,
-                textAlign: 'right',
-              }}
-            >
+            <span style={{ marginLeft: 8, color: '#888', fontWeight: 400, minWidth: 24, textAlign: 'right' }}>
               {d.value}
             </span>
             {isVisible && (
-              <span
-                style={{
-                  marginLeft: 8,
-                  color: '#aaa',
-                  fontWeight: 400,
-                  minWidth: 40,
-                  textAlign: 'right',
-                }}
-              >
+              <span style={{ marginLeft: 8, color: '#aaa', fontWeight: 400, minWidth: 40, textAlign: 'right' }}>
                 {percent}%
               </span>
             )}
@@ -164,51 +152,45 @@ export const DonutChart: React.FC<DonutChartProps> = ({
     </div>
   ) : null;
 
-  // --- Main render ---
   return (
     <div
       ref={containerRef}
-      className={`donut-chart-flex-container legend-${legendPosition}`}
+      className={`donut-chart-flex-container legend-${legendConfig.position || 'bottom'}`}
       style={{
         width: '100%',
         maxWidth: width,
         margin: '0 auto',
         position: 'relative',
         display: 'flex',
-        flexDirection: legendPosition === 'top' || legendPosition === 'bottom' ? 'column' : 'row',
+        flexDirection: legendConfig.position === 'top' || legendConfig.position === 'bottom' ? 'column' : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: isLegendVertical ? 32 : 0,
       }}
     >
       {/* Legend (top/left) */}
-      {showLegend && isLegendFirst && legend}
+      {legendConfig.show && isLegendFirst && legendElement}
+
       {/* SVG Donut Chart */}
       <svg
         ref={svgRef}
-        width={svgWidth}
+        width={dimensions.width}
         height={dimensions.height}
-        viewBox={`0 0 ${svgWidth} ${dimensions.height}`}
+        viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         aria-label={ariaLabel}
         style={{ display: 'block', background: 'none', flex: 'none' }}
       >
         <DonutChartRenderer
           svgRef={svgRef}
           tooltipRef={tooltipRef}
-          data={arcData}
-          width={svgWidth}
+          data={filteredData.map((d, i) => ({ ...d, color: d.color || colorScale(d.label, i) }))}
+          width={dimensions.width}
           height={dimensions.height}
           innerRadius={innerRadius}
           outerRadius={outerRadius}
-          colorScale={colorScale}
-          innerRadiusRatio={innerRadiusRatio}
-          colors={colors}
-          margin={margin}
           showTooltip={showTooltip}
-          showLegend={showLegend}
-          legendFontSize={legendFontSize}
-          legendFontColor={legendFontColor}
-          legendLabels={legendLabels}
+          tooltip={tooltipConfig}
+          legend={legendConfig}
           centerLabel={centerLabel}
           centerValue={total}
           centerIcon={centerIcon}
@@ -219,8 +201,10 @@ export const DonutChart: React.FC<DonutChartProps> = ({
           visibleLabels={visibleLabels}
         />
       </svg>
+
       {/* Legend (bottom/right) */}
-      {showLegend && !isLegendFirst && legend}
+      {legendConfig.show && !isLegendFirst && legendElement}
+
       <div
         ref={tooltipRef}
         className="tooltip"

@@ -26,8 +26,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
   yAxis = {},
   grid = { horizontal: false, vertical: false },
   showLegend = true,
-  legendPosition = 'right',
-  clickableLegend = true,
+  legend = {},
   trendLine,
   pointSize = 6,
   bubbleChart = {},
@@ -62,7 +61,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
           seriesList.push({
             id: s.id,
             name: s.name || s.id,
-            color: typeof s.colors === 'string' ? s.colors : '',
+            colors: typeof s.colors === 'string' ? s.colors : '',
           });
         }
       });
@@ -81,7 +80,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
     // Get unique categories across all series
     const categories = [...new Set(allData.map((d) => d.category))];
 
-    // Create separate color scales for categories and series
+    // Create separate colors scales for categories and series
     let categoryColorScale: d3.ScaleOrdinal<string, string>;
     let seriesColorScale: d3.ScaleOrdinal<string, string>;
 
@@ -97,17 +96,17 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
       categoryColorScale = d3.scaleOrdinal<string>().domain(categories).range(DEFAULT_COLORS);
     }
 
-    // Create series color scale
+    // Create series colors scale
     seriesColorScale = d3
       .scaleOrdinal<string>()
       .domain(seriesList.map((s) => s.id))
       .range(DEFAULT_COLORS);
 
-    // Helper function to get point color based on series or category
+    // Helper function to get point colors based on series or category
     const getPointColor = (
       d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
     ): string => {
-      // If we have series and this point has a seriesId, use series color
+      // If we have series and this point has a seriesId, use series colors
       if (series && series.length > 0 && d.seriesId) {
         const seriesConfig = series.find((s) => s.id === d.seriesId);
         if (seriesConfig && typeof seriesConfig.colors === 'string') {
@@ -115,7 +114,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
         }
         return seriesColorScale(d.seriesId);
       }
-      // Otherwise use category color
+      // Otherwise use category colors
       return d.category ? categoryColorScale(d.category) : DEFAULT_COLORS[0];
     };
 
@@ -124,11 +123,11 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
       const legendItemHeight = 20;
       const legendWidth = 120; // Fixed width for legend
 
-      if (legendPosition === 'right') margin.right += legendWidth;
-      else if (legendPosition === 'left') margin.left += legendWidth;
-      else if (legendPosition === 'top')
+      if (legend.position === 'right') margin.right += legendWidth;
+      else if (legend.position === 'left') margin.left += legendWidth;
+      else if (legend.position === 'top')
         margin.top += categories.length * legendItemHeight + legendPadding;
-      else if (legendPosition === 'bottom')
+      else if (legend.position === 'bottom')
         margin.bottom += categories.length * legendItemHeight + legendPadding;
     }
 
@@ -364,8 +363,8 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
 
           if (onPointHover) {
             const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const color = getPointColor(d);
-            onPointHover(event, d, color, mouseX, mouseY, d.seriesId, d.seriesName);
+            const colors = getPointColor(d);
+            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
           }
         },
       )
@@ -378,8 +377,8 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
           // Update tooltip position on mouse move
           if (onPointHover) {
             const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const color = getPointColor(d);
-            onPointHover(event, d, color, mouseX, mouseY, d.seriesId, d.seriesName);
+            const colors = getPointColor(d);
+            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
           }
         },
       )
@@ -420,7 +419,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
 
     // Draw error bars if enabled
     const errorBarsEnabled = errorBars?.enabled || false;
-    const errorBarColor = errorBars?.color || '#333';
+    const errorBarColor = errorBars?.colors || '#333';
     const errorBarStrokeWidth = errorBars?.strokeWidth || 1;
     const errorBarCapWidth = errorBars?.capWidth || 6;
     const errorBarOpacity = errorBars?.opacity || 0.6;
@@ -447,7 +446,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
         if (d.seriesId) {
           const seriesItem = series?.find((s) => s.id === d.seriesId);
           if (seriesItem?.errorBars) {
-            pointErrorBarColor = seriesItem.errorBars.color || pointErrorBarColor;
+            pointErrorBarColor = seriesItem.errorBars.colors || pointErrorBarColor;
             pointErrorBarStrokeWidth = seriesItem.errorBars.strokeWidth || pointErrorBarStrokeWidth;
             pointErrorBarOpacity = seriesItem.errorBars.opacity || pointErrorBarOpacity;
           }
@@ -657,8 +656,8 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
 
           if (onPointHover) {
             const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const color = getPointColor(d);
-            onPointHover(event, d, color, mouseX, mouseY, d.seriesId, d.seriesName);
+            const colors = getPointColor(d);
+            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
           }
         },
       )
@@ -670,8 +669,8 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
         ) {
           if (onPointHover) {
             const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const color = getPointColor(d);
-            onPointHover(event, d, color, mouseX, mouseY, d.seriesId, d.seriesName);
+            const colors = getPointColor(d);
+            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
           }
         },
       )
@@ -731,7 +730,7 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
         .datum(regressionData)
         .attr('class', 'trend-line')
         .attr('d', line)
-        .style('stroke', trendLine.color || 'steelblue')
+        .style('stroke', trendLine.colors || 'steelblue')
         .style('stroke-width', trendLine.strokeWidth || 2)
         .style('stroke-dasharray', trendLine.strokeDasharray || '6, 2')
         .style('fill', 'none');
@@ -743,13 +742,13 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
       let legendX = 0,
         legendY = 0;
 
-      if (legendPosition === 'right') {
+      if (legend.position === 'right') {
         legendX = chartWidth + margin.left + 20;
         legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
-      } else if (legendPosition === 'left') {
+      } else if (legend.position === 'left') {
         legendX = 10;
         legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
-      } else if (legendPosition === 'top') {
+      } else if (legend.position === 'top') {
         legendX = margin.left;
         legendY = 10;
       } else {
@@ -770,9 +769,9 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
         .append('g')
         .attr('class', 'legend-item')
         .attr('transform', (d, i) => `translate(0, ${i * legendItemHeight})`)
-        .style('cursor', clickableLegend ? 'pointer' : 'default')
+        .style('cursor', legend.clickable ? 'pointer' : 'default')
         .on('click', (event, d: string) => {
-          if (clickableLegend && onLegendItemClick) {
+          if (legend.clickable && onLegendItemClick) {
             const newSelectedCategory = selectedCategory === d ? null : d;
             onLegendItemClick(newSelectedCategory);
           }
@@ -807,8 +806,8 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
     yAxis,
     grid,
     showLegend,
-    legendPosition,
-    clickableLegend,
+    legend.position,
+    legend.clickable,
     trendLine,
     pointSize,
     bubbleChart,

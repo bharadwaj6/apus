@@ -41,9 +41,9 @@ export interface StackedBarChartRendererProps {
   visibleKeys: string[];
   setVisibleKeys: React.Dispatch<React.SetStateAction<string[]>>;
   showLegend: boolean;
-  legendPosition: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize: string;
-  legendFontColor: string;
+  legend.position: 'top' | 'right' | 'bottom' | 'left';
+  legend.itemFontSize: string;
+  legend.itemColor: string;
   barCornerRadius?: number;
   showValues?: boolean;
   valuesFontSize?: string;
@@ -72,9 +72,9 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
   visibleKeys,
   setVisibleKeys,
   showLegend,
-  legendPosition,
-  legendFontSize,
-  legendFontColor,
+  legend.position,
+  legend.itemFontSize,
+  legend.itemColor,
   barCornerRadius = 0,
   showValues = false,
   valuesFontSize = '10px',
@@ -111,22 +111,22 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
     // Adjust dimensions for legend
     let legendWidth = 0;
     let legendHeight = 0;
-    const legendPadding = 10;
+    const legend.padding = 10;
     const legendItemHeight = 20; // Approximate height of a legend item
     const legendTextPadding = 5;
 
     if (showLegend) {
-      if (legendPosition === 'top' || legendPosition === 'bottom') {
-        legendHeight = legendItemHeight + legendPadding; // Minimum one line
+      if (legend.position === 'top' || legend.position === 'bottom') {
+        legendHeight = legendItemHeight + legend.padding; // Minimum one line
         innerHeight -= legendHeight;
-      } else if (legendPosition === 'left' || legendPosition === 'right') {
+      } else if (legend.position === 'left' || legend.position === 'right') {
         // Estimate legend width
         const maxKeyLength = Math.max(...keys.map((key) => key.length));
         legendWidth =
-          maxKeyLength * (parseFloat(legendFontSize) * 0.6) +
+          maxKeyLength * (parseFloat(legend.itemFontSize) * 0.6) +
           legendItemHeight +
           legendTextPadding +
-          legendPadding; // Approx width
+          legend.padding; // Approx width
         innerWidth -= legendWidth;
       }
     }
@@ -138,8 +138,8 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
       let xOffset = margin.left;
       let yOffset = margin.top;
       if (showLegend) {
-        if (legendPosition === 'top') yOffset += legendHeight;
-        else if (legendPosition === 'left') xOffset += legendWidth;
+        if (legend.position === 'top') yOffset += legendHeight;
+        else if (legend.position === 'left') xOffset += legendWidth;
       }
       return `translate(${xOffset}, ${yOffset})`;
     });
@@ -185,7 +185,7 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
         .padding(0.2);
     }
 
-    // Define color scale
+    // Define colors scale
     const colorScale = d3
       .scaleOrdinal<string>()
       .domain(keys)
@@ -403,7 +403,7 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
           const segmentColor = colors[keys.indexOf(segmentKey) % colors.length];
 
           tooltipHtml += `<div style="display: flex; align-items: center; margin-bottom: 4px;">
-                            <span style="display: inline-block; width: 10px; height: 10px; background-color: ${segmentColor}; margin-right: 5px; border-radius: 2px;"></span>
+                            <span style="display: inline-block; width: 10px; height: 10px; background-colors: ${segmentColor}; margin-right: 5px; border-radius: 2px;"></span>
                             <span>${segmentKey}: ${segmentValue.toLocaleString()}</span>
                          </div>`;
 
@@ -456,13 +456,13 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
         : d3.select(document.body).append('svg').style('visibility', 'hidden');
       const tempLegendGroup = measureSvg.append('g').attr('class', 'temp-measuring-legend');
 
-      if (legendPosition === 'top' || legendPosition === 'bottom') {
+      if (legend.position === 'top' || legend.position === 'bottom') {
         let tempCurrentX = 0;
         calculatedLegendHeight = legendLineHeight; // Min one line
         keys.forEach((key, i) => {
           const tempText = tempLegendGroup
             .append('text')
-            .style('font-size', legendFontSize)
+            .style('font-size', legend.itemFontSize)
             .text(key);
           const textWidth = (tempText.node() as SVGTextElement).getComputedTextLength();
           tempText.remove();
@@ -480,7 +480,7 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
         keys.forEach((key) => {
           const tempText = tempLegendGroup
             .append('text')
-            .style('font-size', legendFontSize)
+            .style('font-size', legend.itemFontSize)
             .text(key);
           const textWidth = (tempText.node() as SVGTextElement).getComputedTextLength();
           tempText.remove();
@@ -498,12 +498,12 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
       let mainGx = margin.left;
       let mainGy = margin.top;
 
-      if (legendPosition === 'top') {
+      if (legend.position === 'top') {
         mainGy += calculatedLegendHeight + legendVerticalPadding;
         initialLegendYTranslation = -calculatedLegendHeight - legendVerticalPadding; // Relative to new 'g' origin
-      } else if (legendPosition === 'bottom') {
+      } else if (legend.position === 'bottom') {
         initialLegendYTranslation = innerHeight + 30; // Spacing from chart bottom
-      } else if (legendPosition === 'left') {
+      } else if (legend.position === 'left') {
         mainGx += calculatedLegendWidth + legendItemSpacing;
         initialLegendXTranslation = -calculatedLegendWidth - legendItemSpacing; // Relative to new 'g' origin
       } else {
@@ -550,12 +550,12 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
         .attr('x', legendRectSize + legendItemHorizontalPadding)
         .attr('y', legendRectSize / 2) // Center text with rect
         .attr('dy', '0.35em')
-        .style('font-size', legendFontSize)
-        .style('fill', legendFontColor)
+        .style('font-size', legend.itemFontSize)
+        .style('fill', legend.itemColor)
         .text((d: string) => d);
 
       // Position legend items
-      if (legendPosition === 'top' || legendPosition === 'bottom') {
+      if (legend.position === 'top' || legend.position === 'bottom') {
         legendItems.each(function (key, i) {
           const itemGroup = d3.select(this);
           const textNode = itemGroup.select('text').node() as SVGTextElement;
@@ -596,9 +596,9 @@ export const StackedBarChartRenderer: React.FC<StackedBarChartRendererProps> = (
     visibleKeys,
     setVisibleKeys,
     showLegend,
-    legendPosition,
-    legendFontSize,
-    legendFontColor,
+    legend.position,
+    legend.itemFontSize,
+    legend.itemColor,
     barCornerRadius,
     showValues,
     valuesFontSize,

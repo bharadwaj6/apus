@@ -3,6 +3,10 @@
  * @description Type definitions for the LineChart component
  */
 
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export type LineChartDataPoint = {
   label: string | number;
   value: number;
@@ -10,35 +14,24 @@ export type LineChartDataPoint = {
 
 export type LineChartSeries = {
   name: string;
-  values: LineChartDataPoint[];
+  dataPoints: LineChartDataPoint[];
 };
 
-export type LineChartProps = {
-  ariaLabel?: string;
+export type LineChartProps = BaseChartProps & {
   data: LineChartSeries[];
-  width?: number;
-  height?: number;
-  lineColors?: string | string[];
+  colors?: string | string[];
   areaColor?: string;
   pointColor?: string;
-  margin?: { top: number; right: number; bottom: number; left: number };
   yAxisTicks?: number;
   showXAxis?: boolean;
   showYAxis?: boolean;
   showGridLines?: boolean;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
   areaGradientColors?: string[];
   lineGradientColors?: string[];
   showArea?: boolean;
-  responsive?: boolean;
+  tooltip?: TooltipConfig;
   showLegend?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize?: string;
-  legendFontColor?: string;
+  legend?: LegendConfig;
   // Axis styling properties
   xAxisTextColor?: string;
   yAxisTextColor?: string;

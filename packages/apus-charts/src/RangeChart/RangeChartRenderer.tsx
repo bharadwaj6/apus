@@ -11,8 +11,8 @@ type RangeChartRendererProps = {
   svgRef: RefObject<SVGSVGElement>;
   data: RangeChartDataItem[];
   dimensions: { width: number; height: number; margin: Margin };
-  color1: string;
-  color2: string;
+  colors[0]: string;
+  colors[1]: string;
   margin: Margin;
   showXAxis: boolean;
   showYAxis: boolean;
@@ -29,8 +29,8 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
   svgRef,
   data,
   dimensions,
-  color1,
-  color2,
+  colors[0],
+  colors[1],
   margin,
   showXAxis,
   showYAxis,
@@ -116,20 +116,20 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
       .attr('y', (d) => y(d.range1.max))
       .attr('width', 8)
       .attr('height', (d) => y(d.range1.min) - y(d.range1.max))
-      .attr('fill', color1)
+      .attr('fill', colors[0])
       .attr('opacity', 0.2);
 
     rangeGroup
       .append('circle')
       .attr('cy', (d) => y(d.range1.min))
       .attr('r', 4)
-      .attr('fill', color1);
+      .attr('fill', colors[0]);
 
     rangeGroup
       .append('circle')
       .attr('cy', (d) => y(d.range1.max))
       .attr('r', 4)
-      .attr('fill', color1);
+      .attr('fill', colors[0]);
 
     // Range 2
     rangeGroup
@@ -138,20 +138,20 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
       .attr('y', (d) => y(d.range2.max))
       .attr('width', 8)
       .attr('height', (d) => y(d.range2.min) - y(d.range2.max))
-      .attr('fill', color2)
+      .attr('fill', colors[1])
       .attr('opacity', 0.2);
 
     rangeGroup
       .append('circle')
       .attr('cy', (d) => y(d.range2.min))
       .attr('r', 4)
-      .attr('fill', color2);
+      .attr('fill', colors[1]);
 
     rangeGroup
       .append('circle')
       .attr('cy', (d) => y(d.range2.max))
       .attr('r', 4)
-      .attr('fill', color2);
+      .attr('fill', colors[1]);
 
     const tooltipArea = rangeGroup
       .append('rect')
@@ -174,8 +174,8 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
       });
   }, [
     data,
-    color1,
-    color2,
+    colors[0],
+    colors[1],
     margin,
     dimensions,
     showXAxis,

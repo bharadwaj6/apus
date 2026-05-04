@@ -1,3 +1,7 @@
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export type NestedDonutDataPoint = {
   label: string;
   value: number;
@@ -6,19 +10,15 @@ export type NestedDonutDataPoint = {
 
 export type NestedDonutLevelData = NestedDonutDataPoint[];
 
-export type NestedDonutChartProps = {
+export type NestedDonutChartProps = BaseChartProps & {
   levels: NestedDonutLevelData[];
-  width?: number;
-  height?: number;
   colors?: string[][];
   centerLabel?: string;
   centerValue?: string | number;
   onSliceClick?: (levelIndex: number, data: NestedDonutDataPoint) => void;
   showLegend?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
+  legend?: LegendConfig;
   theme?: 'light' | 'dark';
-  className?: string;
-  style?: React.CSSProperties;
   // Added glow effect props
   enableGlow?: boolean;
   glowColor?: string; // defaults to slice color
@@ -27,11 +27,7 @@ export type NestedDonutChartProps = {
   outerRadius?: number;
   cornerRadius?: number;
   padAngle?: number;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
+  tooltip?: TooltipConfig;
 };
 
 // NestedDonutChartRendererProps is the same as NestedDonutChartProps

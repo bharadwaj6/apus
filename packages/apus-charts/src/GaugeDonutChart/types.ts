@@ -1,3 +1,7 @@
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export type GradientStop = {
   offset: string;
   color: string;
@@ -11,10 +15,8 @@ export type GaugeDonutData = {
   gradient?: GradientStop[];
 };
 
-export type GaugeDonutChartProps = {
+export type GaugeDonutChartProps = BaseChartProps & {
   data: GaugeDonutData[];
-  width?: number;
-  height?: number;
   variant?:
     | 'full'
     | 'half-bottom'
@@ -34,19 +36,11 @@ export type GaugeDonutChartProps = {
   cornerRadius?: number;
   padAngle?: number;
   showLegend?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize?: string;
-  legendFontColor?: string;
+  legend?: LegendConfig;
   showTooltip?: boolean;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
-  theme?: 'light' | 'dark';
-  className?: string;
-  style?: React.CSSProperties;
+  tooltip?: TooltipConfig;
   tooltipFormat?: (data: GaugeDonutData, total: number, percent: string) => string;
+  theme?: 'light' | 'dark';
   enableGlow?: boolean;
   glowColor?: string;
   glowBlur?: number;

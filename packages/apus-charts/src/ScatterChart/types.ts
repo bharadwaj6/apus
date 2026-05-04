@@ -1,4 +1,7 @@
 import { CSSProperties } from 'react';
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
 
 export interface ScatterDataPoint {
   x: number | Date;
@@ -15,15 +18,6 @@ export interface ScatterHoveredData extends ScatterDataPoint {
   eventY: number;
   seriesId?: string; // ID of the series this point belongs to
   seriesName?: string; // Display name of the series
-}
-
-export type LegendPosition = 'top' | 'right' | 'bottom' | 'left';
-
-export interface Margin {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
 }
 
 export interface AxisProps {
@@ -84,32 +78,23 @@ export interface SeriesConfig {
   visible?: boolean; // Whether the series is visible (default: true)
 }
 
-export interface ScatterChartProps {
+export type ScatterChartProps = BaseChartProps & {
   // Single dataset mode
   data?: ScatterDataPoint[];
   // Multiple series mode
   series?: SeriesConfig[];
   // Common props
-  width: number;
-  height: number;
   colors?: string[] | Record<string, string>; // Default colors
-  style?: CSSProperties;
-  className?: string;
   xAxis?: Partial<AxisProps>;
   yAxis?: Partial<AxisProps>;
   grid?: Partial<GridProps>;
   showLegend?: boolean;
-  legendPosition?: LegendPosition;
+  legend?: LegendConfig;
   clickableLegend?: boolean;
   onLegendItemClick?: (category: string | null, seriesId?: string) => void;
   showTooltip?: boolean;
+  tooltip?: TooltipConfig;
   tooltipFormat?: (data: ScatterHoveredData) => string;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipOffsetX?: number;
-  tooltipOffsetY?: number;
   trendLine?: Partial<TrendLineProps>; // Default trend line config
   pointSize?: number; // Default point size
   bubbleChart?: Partial<BubbleChartConfig>; // Default bubble chart config

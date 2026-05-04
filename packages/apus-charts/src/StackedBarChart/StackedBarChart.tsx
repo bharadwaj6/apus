@@ -7,50 +7,62 @@ import { StackedBarChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
 import { StackedBarChartRenderer } from './StackedBarChartRenderer';
+import { useChartTheme } from '../theme/ChartThemeContext';
+import type { TooltipConfig, LegendConfig } from '../types';
 
 /**
  * StackedBarChart component for rendering stacked bar charts
  */
-export const StackedBarChart: React.FC<StackedBarChartProps> = ({
-  data,
-  keys,
-  indexBy,
-  width = 600,
-  height = 400,
-  layout = 'vertical',
-  colors = ['#f8a07b', '#ffc5b2', '#ff7c43', '#e34a33', '#b30000', '#7f0000'],
-  margin = { top: 30, right: 30, bottom: 50, left: 60 },
-  responsive = true,
-  showXAxis = true,
-  showYAxis = true,
-  showGridLines = true,
-  xAxisTextColor = '#666666',
-  yAxisTextColor = '#666666',
-  axisLineColor = '#cccccc',
-  yAxisTicks = 5,
-  tooltipBackgroundColor = '#FFFFFF',
-  tooltipTextColor = '#333333',
-  tooltipPadding = '10px',
-  tooltipBorderRadius = '4px',
-  tooltipFontSize = '12px',
-  ariaLabel = 'Stacked bar chart',
-  showLegend = true,
-  legendPosition = 'top',
-  legendFontSize = '12px',
-  legendFontColor = '#666666',
-  barCornerRadius = 0,
-  showValues = false,
-  valuesFontSize = '10px',
-  valuesFontColor = '#333333',
-  barOpacity = 1,
-  animationDuration = 750,
-  visibleKeys: externalVisibleKeys,
-  setVisibleKeys: externalSetVisibleKeys,
-  tooltipComponent, // Keep this if it exists, or remove if not used elsewhere
-}) => {
+export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
+  const theme = useChartTheme();
+
+  const {
+    data,
+    keys,
+    indexBy,
+    width = 600,
+    height = 400,
+    layout = 'vertical',
+    colors: colorsProp,
+    margin = props.margin || theme.margin,
+    responsive = true,
+    showXAxis = true,
+    showYAxis = true,
+    showGridLines = true,
+    xAxisTextColor = props.xAxisTextColor || theme.axis.textColor,
+    yAxisTextColor = props.yAxisTextColor || theme.axis.textColor,
+    axisLineColor = props.axisLineColor || theme.axis.lineColor,
+    yAxisTicks = 5,
+    tooltip: tooltipProp,
+    showLegend = true,
+    legend: legendProp,
+    barCornerRadius = 0,
+    showValues = false,
+    valuesFontSize = '10px',
+    valuesFontColor = '#333',
+    barOpacity = 1,
+    animationDuration = 750,
+    visibleKeys: externalVisibleKeys,
+    setVisibleKeys: externalSetVisibleKeys,
+    ariaLabel = 'Stacked bar chart',
+  } = props;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Merge tooltip config with theme
+  const tooltipConfig: TooltipConfig = {
+    ...theme.tooltip,
+    ...tooltipProp,
+  };
+
+  // Merge legend config with theme
+  const legendConfig: LegendConfig = {
+    ...theme.legend,
+    ...legendProp,
+    show: showLegend,
+  };
 
   // State for tracking visible keys if not controlled from parent
   const [internalVisibleKeys, setInternalVisibleKeys] = useState<string[]>(keys);
@@ -61,13 +73,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
 
   // Use custom hooks
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor,
-    textColor: tooltipTextColor,
-    padding: tooltipPadding,
-    borderRadius: tooltipBorderRadius,
-    fontSize: tooltipFontSize,
-  });
+  const tooltip = useTooltip(tooltipRef, tooltipConfig);
 
   // Apply tooltip styles when component mounts
   useEffect(() => {
@@ -91,16 +97,9 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
         width: responsive ? '100%' : width,
         height: responsive ? '0' : height,
         paddingBottom: paddingBottom,
-        minHeight:
-          showLegend && (legendPosition === 'top' || legendPosition === 'bottom') && responsive
-            ? `${dimensions.height + 40}px`
-            : undefined,
+        minHeight: responsive ? undefined : height,
       }}
     >
-      {/* Tooltip element */}
-      {/* Tooltip element, styled by useTooltip hook */}
-      <div ref={tooltipRef} aria-hidden="true" />
-
       <svg
         ref={svgRef}
         width={dimensions.width}
@@ -109,19 +108,19 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
           position: responsive ? 'absolute' : undefined,
           top: 0,
           left: 0,
-          overflow: 'visible',
         }}
         aria-label={ariaLabel}
       >
         <StackedBarChartRenderer
           svgRef={svgRef}
-          tooltip={tooltip}
+          tooltipRef={tooltipRef}
           data={data}
           keys={keys}
           indexBy={indexBy}
           dimensions={dimensions}
+          colors={colorsProp || ['#f8a07b', '#ffc5b2', '#ff7c43', '#e34a33', '#b30000', '#7f0000']}
           margin={margin}
-          colors={colors}
+          layout={layout}
           showXAxis={showXAxis}
           showYAxis={showYAxis}
           showGridLines={showGridLines}
@@ -129,24 +128,20 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
           yAxisTextColor={yAxisTextColor}
           axisLineColor={axisLineColor}
           yAxisTicks={yAxisTicks}
-          visibleKeys={visibleKeys}
-          setVisibleKeys={setVisibleKeys}
+          tooltip={tooltipConfig}
           showLegend={showLegend}
-          legendPosition={legendPosition}
-          legendFontSize={legendFontSize}
-          legendFontColor={legendFontColor}
+          legend={legendConfig}
           barCornerRadius={barCornerRadius}
           showValues={showValues}
           valuesFontSize={valuesFontSize}
           valuesFontColor={valuesFontColor}
           barOpacity={barOpacity}
           animationDuration={animationDuration}
-          layout={layout}
-          tooltipComponent={tooltipComponent}
+          visibleKeys={visibleKeys}
+          setVisibleKeys={setVisibleKeys}
         />
       </svg>
+      <div ref={tooltipRef} aria-hidden="true" />
     </div>
   );
 };
-
-export default StackedBarChart;

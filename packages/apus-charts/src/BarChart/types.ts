@@ -3,20 +3,19 @@
  * @description Type definitions for the BarChart component
  */
 
+import type { BaseChartProps, Margin } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export type BarChartData = {
   label: string;
   value: number;
 };
 
-export type BarChartProps = {
-  ariaLabel?: string;
+export type BarChartProps = BaseChartProps & {
   data: BarChartData[];
-  width?: number;
-  height?: number;
-  color?: string | string[];
+  colors?: string[];
   gradientColors?: string[];
-  margin?: { top: number; right: number; bottom: number; left: number };
-  responsive?: boolean;
   showXAxis?: boolean;
   showYAxis?: boolean;
   showGridLines?: boolean;
@@ -24,14 +23,7 @@ export type BarChartProps = {
   yAxisTextColor?: string;
   axisLineColor?: string;
   yAxisTicks?: number;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
+  tooltip?: TooltipConfig;
   showLegend?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize?: string;
-  legendFontColor?: string;
-  legendLabels?: string[];
+  legend?: LegendConfig;
 };

@@ -4,7 +4,7 @@ import { GaugeDonutChartProps, GaugeDonutData } from './types';
 import { useTooltip } from '../hooks/useTooltip';
 
 export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
+  legend.position?: 'top' | 'right' | 'bottom' | 'left';
   theme?: 'light' | 'dark';
   className?: string;
   style?: React.CSSProperties;
@@ -20,11 +20,11 @@ export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
     | 'quarter-top-left';
   colors?: string[];
   showTooltip?: boolean;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
+  tooltip.backgroundColor?: string;
+  tooltip.textColor?: string;
+  tooltip.padding?: string;
+  tooltip.borderRadius?: string;
+  tooltip.fontSize?: string;
   tooltipFormat?: (data: GaugeDonutData, total: number, percent: string) => string;
   enableGlow?: boolean;
   glowColor?: string;
@@ -32,7 +32,7 @@ export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
 }
 
 export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = ({
-  legendPosition = 'bottom',
+  legend.position = 'bottom',
   theme = 'light',
   className = '',
   style,
@@ -45,11 +45,11 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
   onSliceClick,
   colors = d3.schemeCategory10,
   showTooltip = true,
-  tooltipBackgroundColor = 'rgba(0,0,0,0.85)',
-  tooltipTextColor = '#fff',
-  tooltipPadding = '8px 12px',
-  tooltipBorderRadius = '6px',
-  tooltipFontSize = '14px',
+  tooltip.backgroundColor = 'rgba(0,0,0,0.85)',
+  tooltip.textColor = '#fff',
+  tooltip.padding = '8px 12px',
+  tooltip.borderRadius = '6px',
+  tooltip.fontSize = '14px',
   tooltipFormat,
   enableGlow = false,
   glowColor,
@@ -60,11 +60,11 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor,
-    textColor: tooltipTextColor,
-    padding: tooltipPadding,
-    borderRadius: tooltipBorderRadius,
-    fontSize: tooltipFontSize,
+    backgroundColor: tooltip.backgroundColor,
+    textColor: tooltip.textColor,
+    padding: tooltip.padding,
+    borderRadius: tooltip.borderRadius,
+    fontSize: tooltip.fontSize,
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
     zIndex: 1000,
   });
@@ -73,11 +73,11 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
     tooltip.applyTooltipStyles();
   }, [
     tooltip,
-    tooltipBackgroundColor,
-    tooltipTextColor,
-    tooltipPadding,
-    tooltipBorderRadius,
-    tooltipFontSize,
+    tooltip.backgroundColor,
+    tooltip.textColor,
+    tooltip.padding,
+    tooltip.borderRadius,
+    tooltip.fontSize,
   ]);
 
   const handleSliceClick = useCallback(
@@ -193,7 +193,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
             .attr('result', 'coloredBlur');
           filter
             .append('feFlood')
-            .attr('flood-color', glowColor || 'currentColor')
+            .attr('flood-colors', glowColor || 'currentColor')
             .attr('result', 'glowColor');
           filter
             .append('feComposite')
@@ -223,7 +223,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
           gradient
             .append('stop')
             .attr('offset', stop.offset)
-            .attr('stop-color', stop.color)
+            .attr('stop-colors', stop.colors)
             .attr('stop-opacity', stop.opacity ?? 1);
         });
       }
@@ -242,7 +242,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
         if (d.data.gradient) {
           return `url(#gradient-${i})`;
         }
-        return d.data.color || colors[i % colors.length];
+        return d.data.colors || colors[i % colors.length];
       })
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
@@ -335,11 +335,11 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
 
   const containerStyle: React.CSSProperties = {
     display: 'flex',
-    flexDirection: legendPosition === 'right' || legendPosition === 'left' ? 'row' : 'column',
+    flexDirection: legend.position === 'right' || legend.position === 'left' ? 'row' : 'column',
     gap: '1rem',
     padding: '1rem',
     backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    color: theme === 'dark' ? '#ffffff' : '#000000',
+    colors: theme === 'dark' ? '#ffffff' : '#000000',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     ...style,
@@ -359,13 +359,13 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
     padding: '0.5rem',
     backgroundColor: theme === 'dark' ? '#2a2a2a' : '#f5f5f5',
     borderRadius: '4px',
-    maxHeight: legendPosition === 'right' || legendPosition === 'left' ? '100%' : '200px',
+    maxHeight: legend.position === 'right' || legend.position === 'left' ? '100%' : '200px',
     overflowY: 'auto',
   };
 
   return (
     <div className={`chart-container ${className}`} style={containerStyle}>
-      {legendPosition === 'top' && (
+      {legend.position === 'top' && (
         <div style={legendStyle}>
           {data.map((item) => {
             const isActive = activeSlices.has(item.label);
@@ -387,12 +387,12 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.color || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
                     borderRadius: '2px',
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}
@@ -404,7 +404,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
         <div ref={tooltipRef} className="gauge-donut-tooltip"></div>
       </div>
 
-      {legendPosition === 'bottom' && (
+      {legend.position === 'bottom' && (
         <div style={legendStyle}>
           {data.map((item) => {
             const isActive = activeSlices.has(item.label);
@@ -426,19 +426,19 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.color || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
                     borderRadius: '2px',
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}
         </div>
       )}
 
-      {(legendPosition === 'left' || legendPosition === 'right') && (
+      {(legend.position === 'left' || legend.position === 'right') && (
         <div style={{ ...legendStyle, width: '200px' }}>
           {data.map((item) => {
             const isActive = activeSlices.has(item.label);
@@ -460,12 +460,12 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.color || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
                     borderRadius: '2px',
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}

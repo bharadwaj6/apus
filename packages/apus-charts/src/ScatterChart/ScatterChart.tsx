@@ -40,17 +40,18 @@ export const ScatterChart: FC<ScatterChartProps> = ({
   yAxis = {},
   grid = {},
   showLegend = true,
-  legendPosition = 'right',
-  clickableLegend = true,
+  legend = { position: 'right', clickable: true },
   onLegendItemClick,
   showTooltip = true,
   tooltipFormat,
-  tooltipBackgroundColor = 'rgba(50, 50, 50, 0.85)',
-  tooltipTextColor = '#FFFFFF',
-  tooltipPadding = '8px 12px',
-  tooltipBorderRadius = '4px',
-  tooltipOffsetX = 10,
-  tooltipOffsetY = 10,
+  tooltip = {
+    backgroundColor: 'rgba(50, 50, 50, 0.85)',
+    textColor: '#FFFFFF',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    offsetX: 10,
+    offsetY: 10,
+  },
   trendLine,
   pointSize,
   bubbleChart,
@@ -69,10 +70,10 @@ export const ScatterChart: FC<ScatterChartProps> = ({
     hideTooltip,
     applyTooltipStyles,
   } = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor,
-    textColor: tooltipTextColor,
-    padding: tooltipPadding,
-    borderRadius: tooltipBorderRadius,
+    backgroundColor: tooltip.backgroundColor,
+    textColor: tooltip.textColor,
+    padding: tooltip.padding,
+    borderRadius: tooltip.borderRadius,
     fontSize: '12px',
     boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
   });
@@ -98,8 +99,8 @@ export const ScatterChart: FC<ScatterChartProps> = ({
     if (seriesId) {
       setSelectedSeries(selectedSeries === seriesId ? null : seriesId);
     }
-    if (onLegendItemClick) {
-      onLegendItemClick(category, seriesId);
+    if (legend.onItemClick) {
+      legend.onItemClick(category, seriesId);
     }
   };
 
@@ -141,7 +142,7 @@ export const ScatterChart: FC<ScatterChartProps> = ({
         const xValue = dataPoint.x instanceof Date ? dataPoint.x.toLocaleDateString() : dataPoint.x;
         tooltipContent = `
           <div style="display: flex; align-items: center; margin-bottom: 5px;">
-            <span style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></span>
+            <span style="width: 10px; height: 10px; background-colors: ${colors}; border-radius: 50%; margin-right: 8px;"></span>
             <strong>${dataPoint.category}</strong>
           </div>
           ${seriesName ? `<div><strong>Series:</strong> ${seriesName}</div>` : ''}
@@ -153,7 +154,7 @@ export const ScatterChart: FC<ScatterChartProps> = ({
 
       // Use the exact coordinates from the SVG with proper offsets
       // This ensures consistent positioning like in BarChart and RadarChart
-      showTooltipFn(tooltipContent, mouseX, mouseY, tooltipOffsetX, tooltipOffsetY);
+      showTooltipFn(tooltipContent, mouseX, mouseY, tooltip.offsetX, tooltip.offsetY);
     }
   };
 
@@ -175,9 +176,8 @@ export const ScatterChart: FC<ScatterChartProps> = ({
         yAxis={yAxis}
         grid={grid}
         showLegend={showLegend}
-        legendPosition={legendPosition}
-        clickableLegend={clickableLegend}
-        onLegendItemClick={handleLegendItemClick}
+        legend={legend}
+        tooltip={tooltip}
         selectedCategory={selectedCategory}
         selectedSeries={selectedSeries}
         onPointHover={handlePointHover}
@@ -188,6 +188,7 @@ export const ScatterChart: FC<ScatterChartProps> = ({
         bubbleChart={bubbleChart}
         errorBars={errorBars}
         visibleSeries={visibleSeriesState}
+        onLegendItemClick={handleLegendItemClick}
       />
       <div
         ref={tooltipRef}

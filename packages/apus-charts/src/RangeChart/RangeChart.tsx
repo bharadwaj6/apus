@@ -14,8 +14,8 @@ export const RangeChart: React.FC<RangeChartProps> = ({
   width = 600,
   height = 400,
   responsive = true,
-  color1 = '#8884d8',
-  color2 = '#82ca9d',
+  colors[0] = '#8884d8',
+  colors[1] = '#82ca9d',
   margin = defaultMargin,
   showXAxis = true,
   showYAxis = true,
@@ -41,8 +41,8 @@ export const RangeChart: React.FC<RangeChartProps> = ({
           svgRef={svgRef}
           data={data}
           dimensions={dimensions}
-          color1={color1}
-          color2={color2}
+          colors[0]={colors[0]}
+          colors[1]={colors[1]}
           margin={margin}
           showXAxis={showXAxis}
           showYAxis={showYAxis}
@@ -62,7 +62,7 @@ export const RangeChart: React.FC<RangeChartProps> = ({
             left: tooltipPosition.x,
             top: tooltipPosition.y,
             backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
+            colors: 'white',
             padding: '8px',
             borderRadius: '4px',
             fontSize: '12px',

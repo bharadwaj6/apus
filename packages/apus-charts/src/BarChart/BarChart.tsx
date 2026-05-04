@@ -8,55 +8,62 @@ import { BarChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
 import { BarChartRenderer } from './BarChartRenderer';
+import { useChartTheme } from '../theme/ChartThemeContext';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
 
 /**
  * BarChart component for rendering bar charts
  */
-export const BarChart: React.FC<BarChartProps> = ({
-  data,
-  width = 600,
-  height = 400,
-  color = '#6a93d1',
-  gradientColors,
-  margin = { top: 20, right: 30, bottom: 30, left: 40 },
-  responsive = true,
-  showXAxis = true,
-  showYAxis = true,
-  showGridLines = false,
-  xAxisTextColor = '#cccccc',
-  yAxisTextColor = '#cccccc',
-  axisLineColor = '#cccccc',
-  yAxisTicks = 5,
-  tooltipBackgroundColor = 'rgba(0, 0, 0, 0.7)',
-  tooltipTextColor = 'white',
-  tooltipPadding = '8px',
-  tooltipBorderRadius = '4px',
-  tooltipFontSize = '12px',
-  ariaLabel = 'Bar chart',
-  showLegend = false,
-  legendPosition = 'bottom',
-  legendFontSize = '12px',
-  legendFontColor = '#cccccc',
-  legendLabels,
-}) => {
+export const BarChart: React.FC<BarChartProps> = (props) => {
+  const theme = useChartTheme();
+
+  const {
+    data,
+    width = 600,
+    height = 400,
+    margin = props.margin || theme.margin,
+    responsive = true,
+    colors = ['#6a93d1'],
+    gradientColors,
+    showXAxis = true,
+    showYAxis = true,
+    showGridLines = false,
+    xAxisTextColor = props.xAxisTextColor || theme.axis.textColor,
+    yAxisTextColor = props.yAxisTextColor || theme.axis.textColor,
+    axisLineColor = props.axisLineColor || theme.axis.lineColor,
+    yAxisTicks = 5,
+    showLegend = false,
+    legend,
+    ariaLabel = 'Bar chart',
+  } = props;
+
+  const { tooltip: tooltipProp } = props;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Use custom hooks
-  const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltipBackgroundColor,
-    textColor: tooltipTextColor,
-    padding: tooltipPadding,
-    borderRadius: tooltipBorderRadius,
-    fontSize: tooltipFontSize,
-  });
+  // Merge tooltip config with theme
+  const tooltipConfig: TooltipConfig = {
+    ...theme.tooltip,
+    ...tooltipProp,
+  };
+
+  // Merge legend config with theme
+  const legendConfig: LegendConfig = {
+    ...theme.legend,
+    ...legend,
+  };
+
+  const tooltip = useTooltip(tooltipRef, tooltipConfig);
 
   // Apply tooltip styles when component mounts
   useEffect(() => {
     tooltip.applyTooltipStyles();
   }, [tooltip]);
+
+  const dimensions = useChartDimensions(containerRef, width, height, responsive);
 
   const paddingBottom = responsive ? `${(height / width) * 100}%` : undefined;
 
@@ -86,7 +93,7 @@ export const BarChart: React.FC<BarChartProps> = ({
           tooltipRef={tooltipRef}
           data={data}
           dimensions={dimensions}
-          color={color}
+          colors={colors}
           gradientColors={gradientColors}
           margin={margin}
           showXAxis={showXAxis}
@@ -97,10 +104,7 @@ export const BarChart: React.FC<BarChartProps> = ({
           axisLineColor={axisLineColor}
           yAxisTicks={yAxisTicks}
           showLegend={showLegend}
-          legendPosition={legendPosition}
-          legendFontSize={legendFontSize}
-          legendFontColor={legendFontColor}
-          legendLabels={legendLabels}
+          legend={legendConfig}
         />
       </svg>
       <div ref={tooltipRef} className="tooltip" style={{ opacity: 0 }} />

@@ -3,6 +3,10 @@
  * @description Type definitions for the DonutChart component
  */
 
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export type DonutChartData = {
   label: string;
   value: number;
@@ -17,39 +21,25 @@ export type DonutChartLegendItem = {
   percentage: number;
 };
 
-export type DonutChartProps = {
+export type DonutChartProps = BaseChartProps & {
   data: DonutChartData[];
-  width?: number;
-  height?: number;
   innerRadius?: number;
   outerRadius?: number;
   innerRadiusRatio?: number; // 0.5 for donut, 0 for pie
   colors?: string[];
-  margin?: { top: number; right: number; bottom: number; left: number };
-  responsive?: boolean;
   showTooltip?: boolean;
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
+  tooltip?: TooltipConfig;
   showLegend?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize?: string;
-  legendFontColor?: string;
-  legendLabels?: string[];
+  legend?: LegendConfig;
   centerLabel?: string;
   centerValue?: string | number;
   centerIcon?: React.ReactNode;
   extraCenterInfo?: React.ReactNode;
-  ariaLabel?: string;
   showHoverEffect?: boolean;
   onSliceClick?: (data: DonutChartData) => void;
   cornerRadius?: number;
   padAngle?: number;
   theme?: 'light' | 'dark';
-  className?: string;
-  style?: React.CSSProperties;
   enableGlow?: boolean;
   glowColor?: string;
   glowBlur?: number;

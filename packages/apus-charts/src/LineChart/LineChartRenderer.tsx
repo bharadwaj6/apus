@@ -13,7 +13,7 @@ type LineChartRendererProps = {
   tooltipRef: RefObject<HTMLDivElement>;
   data: LineChartSeries[];
   dimensions: { width: number; height: number };
-  lineColors: string | string[];
+  colors: string | string[];
   areaColor: string;
   pointColor: string;
   margin: Margin;
@@ -25,9 +25,9 @@ type LineChartRendererProps = {
   lineGradientColors?: string[];
   showArea: boolean;
   showLegend: boolean;
-  legendPosition: 'top' | 'right' | 'bottom' | 'left';
-  legendFontSize: string;
-  legendFontColor: string;
+  legend.position: 'top' | 'right' | 'bottom' | 'left';
+  legend.itemFontSize: string;
+  legend.itemColor: string;
 };
 
 export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
@@ -35,7 +35,7 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   tooltipRef,
   data,
   dimensions,
-  lineColors,
+  colors,
   areaColor,
   pointColor,
   margin,
@@ -47,9 +47,9 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   lineGradientColors,
   showArea,
   showLegend,
-  legendPosition,
-  legendFontSize,
-  legendFontColor,
+  legend.position,
+  legend.itemFontSize,
+  legend.itemColor,
 }) => {
   const { showTooltip, hideTooltip } = useTooltip(tooltipRef, {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -71,9 +71,9 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
     // Adjust margin if legend is at the bottom or top
     const adjustedMargin = { ...margin };
     if (showLegend) {
-      if (legendPosition === 'bottom') {
+      if (legend.position === 'bottom') {
         adjustedMargin.bottom += 30; // Add extra space for legend
-      } else if (legendPosition === 'top') {
+      } else if (legend.position === 'top') {
         adjustedMargin.top += 30;
       }
     }
@@ -154,9 +154,9 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
 
     // Draw lines and areas for each series
     data.forEach((series, i) => {
-      const seriesColor = Array.isArray(lineColors)
-        ? lineColors[i % lineColors.length]
-        : lineColors;
+      const seriesColor = Array.isArray(colors)
+        ? colors[i % colors.length]
+        : colors;
 
       // Add area if enabled
       if (showArea) {
@@ -240,20 +240,20 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
       addLegend(
         g,
         seriesNames,
-        lineColors,
-        legendPosition,
+        colors,
+        legend.position,
         innerWidth,
         innerHeight,
         adjustedMargin,
-        legendFontSize,
-        legendFontColor,
+        legend.itemFontSize,
+        legend.itemColor,
         gradientIds,
       );
     }
   }, [
     data,
     dimensions,
-    lineColors,
+    colors,
     areaColor,
     pointColor,
     margin,
@@ -265,9 +265,9 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
     lineGradientColors,
     showArea,
     showLegend,
-    legendPosition,
-    legendFontSize,
-    legendFontColor,
+    legend.position,
+    legend.itemFontSize,
+    legend.itemColor,
     svgRef,
     showTooltip,
     hideTooltip,

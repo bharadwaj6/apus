@@ -1,48 +1,27 @@
+import type { BaseChartProps } from '../types/base';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+
 export interface FunnelData {
   label: string;
   value: number;
   color?: string;
 }
 
-export interface FunnelChartProps {
+export interface FunnelChartProps extends BaseChartProps {
   data: FunnelData[];
-  width?: number;
-  height?: number;
-  margin?: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
   showValues?: boolean;
   valueFormat?: (value: number) => string;
   onSliceClick?: (data: FunnelData) => void;
-  className?: string;
-  style?: React.CSSProperties;
   isDarkMode?: boolean;
   // Tooltip props
-  tooltipBackgroundColor?: string;
-  tooltipTextColor?: string;
-  tooltipPadding?: string;
-  tooltipBorderRadius?: string;
-  tooltipFontSize?: string;
-  tooltipOffsetX?: number;
-  tooltipOffsetY?: number;
+  tooltip?: TooltipConfig;
   tooltipFormat?: (data: FunnelData) => string;
   // Legend props
   showLegend?: boolean;
-  legendPosition?: 'top' | 'bottom' | 'left' | 'right';
-  legendTitle?: string;
-  legendItemColor?: string;
-  legendSwatchSize?: number;
-  legendGap?: number;
+  legend?: LegendConfig;
   clickableLegend?: boolean;
   onLegendItemClick?: (data: FunnelData | null) => void;
-  legendTitleColor?: string;
-  legendTitleFontSize?: string;
-  legendTitleFontFamily?: string;
-  legendSwatchBorderWidth?: number;
-  legendSwatchBorderColor?: string;
   enableGradients?: boolean;
   gradientDirection?: 'vertical' | 'horizontal';
   segmentShadowColor?: string;

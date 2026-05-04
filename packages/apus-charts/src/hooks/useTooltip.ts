@@ -4,24 +4,23 @@
  */
 import { RefObject, useCallback } from 'react';
 import * as d3 from 'd3';
-
-export interface TooltipStyles {
-  backgroundColor: string;
-  textColor: string;
-  padding: string;
-  borderRadius: string;
-  fontSize: string;
-  boxShadow?: string;
-  zIndex?: number;
-}
+import type { TooltipConfig } from '../types/tooltip';
 
 /**
  * Custom hook to handle chart tooltips
  * @param tooltipRef - Reference to the tooltip element
- * @param styles - Tooltip styles
+ * @param config - Tooltip configuration
  * @returns Functions to show and hide the tooltip
  */
-export const useTooltip = (tooltipRef: RefObject<HTMLDivElement>, styles: TooltipStyles) => {
+export const useTooltip = (tooltipRef: RefObject<HTMLDivElement>, config: TooltipConfig) => {
+  const {
+    backgroundColor = 'rgba(0, 0, 0, 0.7)',
+    textColor = 'white',
+    padding = '8px',
+    borderRadius = '4px',
+    fontSize = '12px',
+  } = config;
+
   /**
    * Show the tooltip with the given content at the specified position
    * @param content - HTML content to display in the tooltip
@@ -61,7 +60,7 @@ export const useTooltip = (tooltipRef: RefObject<HTMLDivElement>, styles: Toolti
           .style('pointer-events', 'none');
       } else {
         console.warn(
-          '[useTooltip] Tooltip node is null/undefined after setting content in showTooltip.',
+          '[useTooltip] Tooltip node is null/undefined after setting content.',
         );
       }
     },
@@ -85,16 +84,16 @@ export const useTooltip = (tooltipRef: RefObject<HTMLDivElement>, styles: Toolti
     tooltip
       .style('position', 'absolute')
       .style('pointer-events', 'none')
-      .style('background-color', styles.backgroundColor)
-      .style('color', styles.textColor)
-      .style('padding', styles.padding)
-      .style('border-radius', styles.borderRadius)
-      .style('font-size', styles.fontSize)
+      .style('background-color', backgroundColor)
+      .style('color', textColor)
+      .style('padding', padding)
+      .style('border-radius', borderRadius)
+      .style('font-size', fontSize)
       .style('opacity', 0)
       .style('transition', 'opacity 0.2s')
-      .style('z-index', styles.zIndex || 9999)
-      .style('box-shadow', styles.boxShadow || '0 2px 8px rgba(0, 0, 0, 0.15)');
-  }, [tooltipRef, styles]);
+      .style('z-index', '9999')
+      .style('box-shadow', '0 2px 8px rgba(0, 0, 0, 0.15)');
+  }, [tooltipRef, backgroundColor, textColor, padding, borderRadius, fontSize]);
 
   return {
     showTooltip,
