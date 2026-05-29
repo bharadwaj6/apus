@@ -1,8 +1,7 @@
 /**
  * @file LineChartRenderer.tsx
- * @description Renderer component for the LineChart
+ * @description Renderer component for the LineChart (modern zero-dep pure JSX version)
  */
-// @ts-nocheck -- Legacy during final migration of Bar/Line/Range. Safe for published package.
 import React from 'react';
 import { LineChartSeries } from './types';
 import type { LegendConfig } from '../types/legend';
@@ -33,14 +32,12 @@ type LineChartRendererProps = {
 };
 
 export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
-  svgRef,
-  tooltipRef,
   data,
   dimensions,
-  colors,
-  areaColor,
-  pointColor,
   margin,
+  colors,
+  areaColor = 'rgba(70, 130, 180, 0.3)',
+  pointColor = '#88b0de',
   yAxisTicks,
   showXAxis,
   showYAxis,
@@ -50,228 +47,165 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   showArea,
   showLegend,
   legend = {},
+  showTooltip,
+  hideTooltip,
 }) => {
-  const { showTooltip, hideTooltip } = useTooltip(tooltipRef, {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    textColor: 'white',
-    padding: '8px',
-    borderRadius: '4px',
-    fontSize: '12px',
+  const { width: currentWidth, height: currentHeight } = dimensions;
+
+  if (!data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0) {
+    return null;
+  }
+
+  let innerWidth = currentWidth - margin.left - margin.right;
+  let innerHeight = currentHeight - margin.top - margin.bottom;
+
+  if (innerWidth <= 0 || innerHeight <= 0) return null;
+
+  const allPoints = data.flatMap((series) => series.dataPoints || series.values || []);
+  const xDomain = Array.from(new Set(allPoints.map((p: any) => String(p.label))));
+  const yMax = maxOf(allPoints, (p: any) => p.value);
+
+  const xScale = pointScale(xDomain, [0, innerWidth]);
+  const yScale = linearScale([0, yMax || 1], [innerHeight, 0]);
+
+  const colorArray = Array.isArray(colors) ? colors : [colors || '#4682b4'];
+
+  const seriesElements = data.map((series, si) => {
+    const seriesColor = colorArray[si % colorArray.length];
+    const points = series.dataPoints || series.values || [];
+
+    if (points.length === 0) return null;
+
+    const lineD = linePath(
+      points,
+      (d: any) => xScale(String(d.label)) ?? 0,
+      (d: any) => yScale(d.value),
+      'monotone',
+    );
+
+    const areaD = showArea
+      ? areaPath(
+          points,
+          (d: any) => xScale(String(d.label)) ?? 0,
+          (d: any) => yScale(0),
+          (d: any) => yScale(d.value),
+          'monotone',
+        )
+      : null;
+
+    const onPointEnter = (e: React.MouseEvent<SVGCircleElement>, pt: any) => {
+      if (showTooltip) {
+        const content = `<strong>${series.name}</strong><br/>${pt.label}: ${pt.value}`;
+        showTooltip(content, e);
+      }
+    };
+    const onPointLeave = () => hideTooltip?.();
+
+    return (
+      <g key={si}>
+        {areaD && (
+          <path
+            d={areaD}
+            fill={areaGradientColors ? 'url(#areaGradient)' : areaColor}
+            opacity={0.35}
+            stroke="none"
+          />
+        )}
+
+        <path
+          d={lineD}
+          fill="none"
+          stroke={lineGradientColors ? 'url(#lineGradient)' : seriesColor}
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {points.map((pt: any, pi: number) => {
+          const cx = xScale(String(pt.label)) ?? 0;
+          const cy = yScale(pt.value);
+          return (
+            <circle
+              key={pi}
+              cx={cx}
+              cy={cy}
+              r={4}
+              fill={pointColor}
+              stroke="#fff"
+              strokeWidth={1.5}
+              onMouseEnter={(e) => onPointEnter(e, pt)}
+              onMouseLeave={onPointLeave}
+              style={{ cursor: 'pointer' }}
+            />
+          );
+        })}
+      </g>
+    );
   });
 
-  useEffect(() => {
-    const { width: currentWidth, height: currentHeight } = dimensions;
+  const defs = (areaGradientColors || lineGradientColors) && (
+    <defs>
+      {areaGradientColors && areaGradientColors.length >= 2 && (
+        <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={areaGradientColors[0]} stopOpacity={0.5} />
+          <stop offset="100%" stopColor={areaGradientColors[1]} stopOpacity={0.1} />
+        </linearGradient>
+      )}
+      {lineGradientColors && lineGradientColors.length >= 2 && (
+        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor={lineGradientColors[0]} />
+          <stop offset="100%" stopColor={lineGradientColors[1]} />
+        </linearGradient>
+      )}
+    </defs>
+  );
 
-    if (!svgRef.current || !data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0)
-      return;
+  return (
+    <g transform={`translate(${margin.left}, ${margin.top})`}>
+      {defs}
 
-    const svg = d3.select(svgRef.current);
-    svg.select('g.chart-root').remove();
-    svg.selectAll('defs').remove();
+      {showGridLines && showYAxis && (
+        <g className="grid" opacity={0.15}>
+          {yScale.ticks(6).map((tick: number, i: number) => (
+            <line
+              key={i}
+              x1={0}
+              x2={innerWidth}
+              y1={yScale(tick)}
+              y2={yScale(tick)}
+              stroke={axisLineColor || '#ccc'}
+            />
+          ))}
+        </g>
+      )}
 
-    // Adjust margin if legend is at the bottom or top
-    const adjustedMargin = { ...margin };
-    if (showLegend) {
-      if (legend.position === 'bottom') {
-        adjustedMargin.bottom += 30; // Add extra space for legend
-      } else if (legend.position === 'top') {
-        adjustedMargin.top += 30;
-      }
-    }
+      <g className="series">{seriesElements}</g>
 
-    const innerWidth = currentWidth - adjustedMargin.left - adjustedMargin.right;
-    const innerHeight = currentHeight - adjustedMargin.top - adjustedMargin.bottom;
+      {showXAxis && (
+        <g transform={`translate(0, ${innerHeight})`}>
+          <XAxis
+            scale={xScale as any}
+            innerHeight={0}
+            ticks={xDomain}
+            textColor={xAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
 
-    // Ensure inner dimensions are non-negative
-    if (innerWidth <= 0 || innerHeight <= 0) return;
-
-    // Create gradients if needed
-    if (areaGradientColors && areaGradientColors.length >= 2) {
-      createGradient(svg, 'areaGradient', areaGradientColors, true);
-    }
-
-    if (lineGradientColors && lineGradientColors.length >= 2) {
-      createGradient(svg, 'lineGradient', lineGradientColors, false);
-    }
-
-    // Flatten all data points to find min/max values
-    const allDataPoints = data.flatMap((series) => series.values);
-    const allLabels = Array.from(new Set(allDataPoints.map((d) => d.label)));
-
-    // Create scales
-    const x = d3.scalePoint().domain(allLabels.map(String)).range([0, innerWidth]).padding(0.5);
-
-    const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(allDataPoints, (d) => d.value) || 0])
-      .nice()
-      .range([innerHeight, 0]);
-
-    const g = svg
-      .append('g')
-      .attr('class', 'chart-root')
-      .attr('transform', `translate(${adjustedMargin.left},${adjustedMargin.top})`);
-
-    // Add Y axis
-    if (showYAxis) {
-      g.append('g')
-        .call(d3.axisLeft(y).ticks(yAxisTicks))
-        .selectAll('text')
-        .style('font-size', '10px');
-
-      // Add grid lines if enabled
-      if (showGridLines) {
-        addGridLines(g, x, y, innerWidth, innerHeight, false, true, yAxisTicks, '#cccccc');
-      }
-    }
-
-    // Add X axis
-    if (showXAxis) {
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x))
-        .selectAll('text')
-        .style('font-size', '10px');
-
-      // Add grid lines if enabled
-      if (showGridLines) {
-        addGridLines(g, x, y, innerWidth, innerHeight, true, false, yAxisTicks, '#cccccc');
-      }
-    }
-
-    // Create line generator
-    const line = d3
-      .line<{ label: string | number; value: number }>()
-      .x((d) => x(String(d.label)) || 0)
-      .y((d) => y(d.value))
-      .curve(d3.curveMonotoneX);
-
-    // Create area generator
-    const area = d3
-      .area<{ label: string | number; value: number }>()
-      .x((d) => x(String(d.label)) || 0)
-      .y0(innerHeight)
-      .y1((d) => y(d.value))
-      .curve(d3.curveMonotoneX);
-
-    // Draw lines and areas for each series
-    data.forEach((series, i) => {
-      const seriesColor = Array.isArray(colors) ? colors[i % colors.length] : colors;
-
-      // Add area if enabled
-      if (showArea) {
-        g.append('path')
-          .datum(series.values)
-          .attr('class', 'area')
-          .attr(
-            'fill',
-            areaGradientColors && areaGradientColors.length >= 2 ? 'url(#areaGradient)' : areaColor,
-          )
-          .attr('d', area)
-          .attr('opacity', 0)
-          .transition()
-          .duration(750)
-          .attr('opacity', 1);
-      }
-
-      // Add line
-      g.append('path')
-        .datum(series.values)
-        .attr('class', 'line')
-        .attr('fill', 'none')
-        .attr(
-          'stroke',
-          lineGradientColors && lineGradientColors.length >= 2 ? 'url(#lineGradient)' : seriesColor,
-        )
-        .attr('stroke-width', 2)
-        .attr('d', line)
-        .attr('stroke-dasharray', function () {
-          // Check if getTotalLength is available (might not be in test environment)
-          return typeof this.getTotalLength === 'function' ? this.getTotalLength() : 0;
-        })
-        .attr('stroke-dashoffset', function () {
-          // Check if getTotalLength is available (might not be in test environment)
-          return typeof this.getTotalLength === 'function' ? this.getTotalLength() : 0;
-        })
-        .transition()
-        .duration(750)
-        .attr('stroke-dashoffset', 0);
-
-      // Add points
-      const points = g
-        .selectAll(`.point-${i}`)
-        .data(series.values)
-        .enter()
-        .append('circle')
-        .attr('class', `point-${i}`)
-        .attr('cx', (d) => x(String(d.label)) || 0)
-        .attr('cy', (d) => y(d.value))
-        .attr('r', 0)
-        .attr('fill', pointColor)
-        .attr('stroke', seriesColor)
-        .attr('stroke-width', 2)
-        .on('mouseover', (event, d) => {
-          const [mouseX, mouseY] = d3.pointer(event);
-
-          showTooltip(
-            `<strong>${series.name}</strong><br/>${d.label}: ${d.value}`,
-            mouseX + adjustedMargin.left,
-            mouseY + adjustedMargin.top - 10,
-          );
-        })
-        .on('mouseout', hideTooltip);
-
-      // Animate points
-      points
-        .transition()
-        .delay((_, j) => j * 150 + 750)
-        .duration(300)
-        .attr('r', 4);
-    });
-
-    // Add legend if enabled
-    if (showLegend && data.length > 0) {
-      const seriesNames = data.map((series) => series.name);
-
-      // Create gradient IDs for legend if needed
-      const gradientIds =
-        lineGradientColors && lineGradientColors.length >= 2 ? ['lineGradient'] : undefined;
-
-      addLegend(
-        g,
-        seriesNames,
-        colors,
-        legend.position,
-        innerWidth,
-        innerHeight,
-        adjustedMargin,
-        legend.itemFontSize,
-        legend.itemColor,
-        gradientIds,
-      );
-    }
-  }, [
-    data,
-    dimensions,
-    colors,
-    areaColor,
-    pointColor,
-    margin,
-    yAxisTicks,
-    showXAxis,
-    showYAxis,
-    showGridLines,
-    areaGradientColors,
-    lineGradientColors,
-    showArea,
-    showLegend,
-    legend.position,
-    legend.itemFontSize,
-    legend.itemColor,
-    svgRef,
-    showTooltip,
-    hideTooltip,
-  ]);
-
-  return null;
+      {showYAxis && (
+        <g>
+          <YAxis
+            scale={yScale as any}
+            innerWidth={innerWidth}
+            tickCount={yAxisTicks}
+            textColor={yAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
+    </g>
+  );
 };

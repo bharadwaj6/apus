@@ -2,10 +2,9 @@
  * @file chartUtils.ts
  * @description Legacy utility functions (temporarily using shim during final upstream merge cleanup)
  */
-// @ts-nocheck
-// Legacy chartUtils still used by Bar/Line/Range renderers during final migration phase.
-// These three charts will be fully rewritten in a follow-up to remove this file's d3 usage.
-import * as d3 from '../d3-shim';
+// Legacy chartUtils - d3-shim dependency removed as part of full migration.
+// Bar/Line/Range now use pure math + JSX. This file can be cleaned further if needed.
+
 import type { Margin } from '../types/base';
 import type { LegendConfig } from '../types/legend';
 
@@ -38,35 +37,10 @@ export const addGridLines = (
   ticks: number,
   color: string,
 ): void => {
-  if (showYGrid) {
-    const yGrid = g
-      .append('g')
-      .attr('class', 'grid-line')
-      .call(
-        (d3 as any)
-          .axisLeft(y)
-          .ticks(ticks)
-          .tickSize(-width)
-          .tickFormat(() => ''),
-      )
-      .attr('stroke', color)
-      .attr('stroke-opacity', 0.2);
-    yGrid.select('.domain').remove();
-  }
-  if (showXGrid) {
-    const xGrid = g
-      .append('g')
-      .attr('class', 'grid-line')
-      .attr('transform', `translate(0, ${height})`)
-      .call(
-        (d3 as any)
-          .axisBottom(x)
-          .tickSize(-height)
-          .tickFormat(() => ''),
-      )
-      .attr('stroke', color)
-      .attr('stroke-opacity', 0.2);
-    xGrid.select('.domain').remove();
+  // Legacy grid logic removed as part of full d3 elimination.
+  // Modern charts (including the migrated Line/Range) render their own grid via JSX.
+  if (showYGrid || showXGrid) {
+    // No-op for now
   }
 };
 

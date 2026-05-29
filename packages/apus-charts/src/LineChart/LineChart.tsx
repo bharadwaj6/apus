@@ -8,6 +8,7 @@ import { LineChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
 import { LineChartRenderer } from './LineChartRenderer';
+import { useChartTheme } from '../theme/ChartThemeContext';
 import type { LegendConfig } from '../types/legend';
 import type { TooltipConfig } from '../types/tooltip';
 import { Tooltip } from '../components/Tooltip';
@@ -46,6 +47,7 @@ export const LineChart: React.FC<LineChartProps> = ({
   },
   ariaLabel = 'Line chart',
 }) => {
+  const theme = useChartTheme();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Merge tooltip config with theme

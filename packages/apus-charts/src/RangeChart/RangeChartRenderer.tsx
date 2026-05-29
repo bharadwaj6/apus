@@ -1,18 +1,17 @@
 /**
  * @file RangeChartRenderer.tsx
- * @description Renderer component for the RangeChart
+ * @description Renderer component for the RangeChart (modern zero-dep pure JSX version)
  */
-// @ts-nocheck -- Legacy during final migration of Bar/Line/Range. Safe for published package.
-// @ts-nocheck -- Legacy file during final migration. Safe for published package.
-import React, { useEffect, RefObject } from 'react';
-import * as d3 from '../d3-shim';
+import React from 'react';
 import { RangeChartDataItem } from './types';
-import { Margin, addGridLines } from '../utils/chartUtils';
+import type { Dimensions } from '../hooks/useChartDimensions';
+import type { Margin } from '../types/base';
+import { XAxis, YAxis } from '../components/Axis';
+import { bandScale, linearScale, maxOf, minOf } from '../math';
 
 type RangeChartRendererProps = {
-  svgRef: RefObject<SVGSVGElement>;
   data: RangeChartDataItem[];
-  dimensions: { width: number; height: number; margin: Margin };
+  dimensions: Dimensions;
   colors: string[];
   margin: Margin;
   showXAxis: boolean;
@@ -22,12 +21,11 @@ type RangeChartRendererProps = {
   yAxisTextColor: string;
   axisLineColor: string;
   yAxisTicks: number;
-  setHoveredData: (data: RangeChartDataItem | null) => void;
-  setTooltipPosition: (position: { x: number; y: number } | null) => void;
+  showTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+  hideTooltip?: () => void;
 };
 
 export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
-  svgRef,
   data,
   dimensions,
   colors,
@@ -39,155 +37,110 @@ export const RangeChartRenderer: React.FC<RangeChartRendererProps> = ({
   yAxisTextColor,
   axisLineColor,
   yAxisTicks,
-  setHoveredData,
-  setTooltipPosition,
+  showTooltip,
+  hideTooltip,
 }) => {
-  useEffect(() => {
-    const { width: currentWidth, height: currentHeight } = dimensions;
+  const { width: currentWidth, height: currentHeight } = dimensions;
 
-    if (!svgRef.current || !data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0)
-      return;
+  if (!data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0) {
+    return null;
+  }
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
+  let innerWidth = currentWidth - margin.left - margin.right;
+  let innerHeight = currentHeight - margin.top - margin.bottom;
 
-    const innerWidth = currentWidth - margin.left - margin.right;
-    const innerHeight = currentHeight - margin.top - margin.bottom;
+  if (innerWidth <= 0 || innerHeight <= 0) return null;
 
-    if (innerWidth <= 0 || innerHeight <= 0) return;
+  const categories = data.map((d) => d.day);
+  const allValues = data.flatMap((d) => [d.range1.min, d.range1.max, d.range2.min, d.range2.max]);
+  const yMin = minOf(allValues);
+  const yMax = maxOf(allValues);
 
-    const x = d3
-      .scaleBand()
-      .domain(data.map((d) => d.day))
-      .range([0, innerWidth])
-      .padding(0.6);
+  const xScale = bandScale(categories, [0, innerWidth], 0.2, 0.1);
+  const yScale = linearScale([yMin, yMax || 1], [innerHeight, 0]);
 
-    const allValues = data.flatMap((d) => [d.range1.min, d.range1.max, d.range2.min, d.range2.max]);
-    const yMin = d3.min(allValues) || 0;
-    const yMax = d3.max(allValues) || 0;
+  const barWidth = (xScale.bandwidth ? xScale.bandwidth() : 20) * 0.4;
 
-    const y = d3
-      .scaleLinear()
-      .domain([yMin - 10, yMax + 10])
-      .nice()
-      .range([innerHeight, 0]);
+  const groups = data.map((item, i) => {
+    const x =
+      (xScale(item.day) ?? 0) + (xScale.bandwidth ? (xScale.bandwidth() - barWidth * 2) / 2 : 0);
 
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+    const onEnter = (e: React.MouseEvent) => {
+      if (showTooltip) {
+        const content = `<strong>${item.day}</strong><br/>Range1: ${item.range1.min} - ${item.range1.max}<br/>Range2: ${item.range2.min} - ${item.range2.max}`;
+        showTooltip(content, e as any);
+      }
+    };
+    const onLeave = () => hideTooltip?.();
 
-    if (showYAxis) {
-      g.append('g')
-        .call(d3.axisLeft(y).ticks(yAxisTicks).tickSize(-innerWidth))
-        .selectAll('text')
-        .style('font-size', '10px')
-        .style('fill', yAxisTextColor);
-    }
+    return (
+      <g key={i} onMouseEnter={onEnter} onMouseLeave={onLeave} style={{ cursor: 'pointer' }}>
+        {/* Range1 bar */}
+        <rect
+          x={x}
+          y={yScale(item.range1.max)}
+          width={barWidth}
+          height={Math.max(0, yScale(item.range1.min) - yScale(item.range1.max))}
+          fill={colors[0]}
+          rx={2}
+        />
+        {/* Range2 bar */}
+        <rect
+          x={x + barWidth + 4}
+          y={yScale(item.range2.max)}
+          width={barWidth}
+          height={Math.max(0, yScale(item.range2.min) - yScale(item.range2.max))}
+          fill={colors[1]}
+          rx={2}
+        />
+      </g>
+    );
+  });
 
-    if (showXAxis) {
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x))
-        .selectAll('text')
-        .style('font-size', '10px')
-        .style('fill', xAxisTextColor);
-    }
+  return (
+    <g transform={`translate(${margin.left}, ${margin.top})`}>
+      {showGridLines && showYAxis && (
+        <g className="grid" opacity={0.15}>
+          {yScale.ticks(yAxisTicks).map((tick: number, i: number) => (
+            <line
+              key={i}
+              x1={0}
+              x2={innerWidth}
+              y1={yScale(tick)}
+              y2={yScale(tick)}
+              stroke={axisLineColor}
+            />
+          ))}
+        </g>
+      )}
 
-    if (showGridLines) {
-      addGridLines(g, x, y, innerWidth, innerHeight, true, true, yAxisTicks, axisLineColor);
-    }
+      <g className="ranges">{groups}</g>
 
-    g.selectAll('.domain').attr('stroke', 'none');
-    g.selectAll('.tick line')
-      .filter((d, i) => i !== 0)
-      .attr('stroke', axisLineColor)
-      .attr('stroke-dasharray', '2,2');
+      {showXAxis && (
+        <g transform={`translate(0, ${innerHeight})`}>
+          <XAxis
+            scale={xScale as any}
+            innerHeight={0}
+            ticks={categories}
+            textColor={xAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
 
-    const rangeGroup = g
-      .selectAll('.range-group')
-      .data(data)
-      .enter()
-      .append('g')
-      .attr('class', 'range-group')
-      .attr('transform', (d) => `translate(${x(d.day)! + x.bandwidth() / 2}, 0)`);
-
-    // Range 1
-    rangeGroup
-      .append('rect')
-      .attr('x', -4)
-      .attr('y', (d) => y(d.range1.max))
-      .attr('width', 8)
-      .attr('height', (d) => y(d.range1.min) - y(d.range1.max))
-      .attr('fill', colors[0])
-      .attr('opacity', 0.2);
-
-    rangeGroup
-      .append('circle')
-      .attr('cy', (d) => y(d.range1.min))
-      .attr('r', 4)
-      .attr('fill', colors[0]);
-
-    rangeGroup
-      .append('circle')
-      .attr('cy', (d) => y(d.range1.max))
-      .attr('r', 4)
-      .attr('fill', colors[0]);
-
-    // Range 2
-    rangeGroup
-      .append('rect')
-      .attr('x', -4)
-      .attr('y', (d) => y(d.range2.max))
-      .attr('width', 8)
-      .attr('height', (d) => y(d.range2.min) - y(d.range2.max))
-      .attr('fill', colors[1])
-      .attr('opacity', 0.2);
-
-    rangeGroup
-      .append('circle')
-      .attr('cy', (d) => y(d.range2.min))
-      .attr('r', 4)
-      .attr('fill', colors[1]);
-
-    rangeGroup
-      .append('circle')
-      .attr('cy', (d) => y(d.range2.max))
-      .attr('r', 4)
-      .attr('fill', colors[1]);
-
-    const tooltipArea = rangeGroup
-      .append('rect')
-      .attr('x', -x.bandwidth() / 2)
-      .attr('y', 0)
-      .attr('width', x.bandwidth())
-      .attr('height', innerHeight)
-      .attr('fill', 'none')
-      .attr('pointer-events', 'all');
-
-    tooltipArea
-      .on('mouseover', (event, d) => {
-        const [mouseX, mouseY] = d3.pointer(event, svg.node());
-        setHoveredData(d);
-        setTooltipPosition({ x: mouseX, y: mouseY - 10 });
-      })
-      .on('mouseout', () => {
-        setHoveredData(null);
-        setTooltipPosition(null);
-      });
-  }, [
-    data,
-    colors,
-    margin,
-    dimensions,
-    showXAxis,
-    showYAxis,
-    xAxisTextColor,
-    yAxisTextColor,
-    axisLineColor,
-    yAxisTicks,
-    showGridLines,
-    svgRef,
-    setHoveredData,
-    setTooltipPosition,
-  ]);
-
-  return null;
+      {showYAxis && (
+        <g>
+          <YAxis
+            scale={yScale as any}
+            innerWidth={innerWidth}
+            tickCount={yAxisTicks}
+            textColor={yAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
+    </g>
+  );
 };

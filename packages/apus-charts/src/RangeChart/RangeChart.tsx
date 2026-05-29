@@ -2,10 +2,14 @@
  * @file RangeChart.tsx
  * @description Main component for the RangeChart
  */
-import React, { useRef, useState } from 'react';
-import { RangeChartProps, RangeChartDataItem } from './types';
+import React, { useRef } from 'react';
+import { RangeChartProps } from './types';
 import { RangeChartRenderer } from './RangeChartRenderer';
 import { useChartDimensions } from '../hooks/useChartDimensions';
+import { useTooltip } from '../hooks/useTooltip';
+import { useChartTheme } from '../theme/ChartThemeContext';
+import type { TooltipConfig } from '../types/tooltip';
+import { Tooltip } from '../components/Tooltip';
 
 const defaultMargin = { top: 20, right: 20, bottom: 30, left: 40 };
 
@@ -23,21 +27,39 @@ export const RangeChart: React.FC<RangeChartProps> = ({
   yAxisTextColor = '#333',
   axisLineColor = '#ccc',
   yAxisTicks = 5,
+  tooltip,
 }) => {
+  const theme = useChartTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [hoveredData, setHoveredData] = useState<RangeChartDataItem | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+
+  const tooltipConfig: TooltipConfig = {
+    ...theme.tooltip,
+    ...tooltip,
+  };
+
+  const tooltipHook = useTooltip(tooltipConfig);
 
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', width: '100%', height: responsive ? undefined : height }}
+      style={{
+        position: responsive ? 'relative' : undefined,
+        width: responsive ? '100%' : width,
+        height: responsive ? '0' : height,
+        paddingBottom: responsive ? `${(height / width) * 100}%` : undefined,
+      }}
     >
-      <svg ref={svgRef} width={dimensions.width} height={dimensions.height}>
+      <svg
+        width={dimensions.width}
+        height={dimensions.height}
+        style={{
+          position: responsive ? 'absolute' : undefined,
+          top: 0,
+          left: 0,
+        }}
+      >
         <RangeChartRenderer
-          svgRef={svgRef}
           data={data}
           dimensions={dimensions}
           colors={colors}
@@ -49,31 +71,11 @@ export const RangeChart: React.FC<RangeChartProps> = ({
           yAxisTextColor={yAxisTextColor}
           axisLineColor={axisLineColor}
           yAxisTicks={yAxisTicks}
-          setHoveredData={setHoveredData}
-          setTooltipPosition={setTooltipPosition}
+          showTooltip={tooltipHook.showTooltip}
+          hideTooltip={tooltipHook.hideTooltip}
         />
       </svg>
-      {hoveredData && tooltipPosition && (
-        <div
-          style={{
-            position: 'absolute',
-            left: tooltipPosition.x,
-            top: tooltipPosition.y,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            pointerEvents: 'none',
-          }}
-        >
-          <strong>{hoveredData.day}</strong>
-          <br />
-          Sys: {hoveredData.range1.max} mmHg
-          <br />
-          Dia: {hoveredData.range2.min} mmHg
-        </div>
-      )}
+      <Tooltip state={tooltipHook.tooltipState} config={tooltipConfig} />
     </div>
   );
 };
