@@ -3,6 +3,7 @@
  * @description Renderer component for the LineChart
  */
 import React, { useEffect, RefObject } from 'react';
+import * as d3 from '../d3-shim';
 import { LineChartSeries } from './types';
 import type { LegendConfig } from '../types/legend';
 import { Margin, createGradient, addGridLines, addLegend } from '../utils/chartUtils';

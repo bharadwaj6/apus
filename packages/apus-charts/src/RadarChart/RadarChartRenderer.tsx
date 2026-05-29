@@ -261,7 +261,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                           y: y, // SVG y position
                           tooltipX: tooltipX, // Relative X for HTML tooltip
                           tooltipY: tooltipY, // Relative Y for HTML tooltip
-                          colors: series.colors, // Pass series colors
+                          color: series.colors, // Pass series colors
                         });
                       }
                     }
@@ -310,7 +310,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                           y: y, // SVG y position
                           tooltipX: tooltipX, // Relative X for HTML tooltip
                           tooltipY: tooltipY, // Relative Y for HTML tooltip
-                          colors: series.colors, // Pass series colors
+                          color: series.colors, // Pass series colors
                         });
                       }
                     }

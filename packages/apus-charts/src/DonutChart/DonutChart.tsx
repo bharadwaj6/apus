@@ -55,7 +55,7 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
   };
 
   // New React tooltip (replaces old d3 version)
-  const { tooltipState, showTooltip, hideTooltip } = useTooltip(tooltipConfig);
+  const { tooltipState, showTooltip: showTooltipHook, hideTooltip } = useTooltip(tooltipConfig);
 
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
 

@@ -108,7 +108,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
     gap: '1rem',
     padding: '1rem',
     backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    colors: theme === 'dark' ? '#ffffff' : '#000000',
+    color: theme === 'dark' ? '#ffffff' : '#000000',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     ...style,
@@ -168,7 +168,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        colors: theme === 'dark' ? '#fff' : '#000',
+                        color: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -312,7 +312,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        colors: theme === 'dark' ? '#fff' : '#000',
+                        color: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -359,7 +359,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        colors: theme === 'dark' ? '#fff' : '#000',
+                        color: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}
@@ -406,7 +406,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         flex: 1,
                         fontSize: '14px',
-                        colors: theme === 'dark' ? '#fff' : '#000',
+                        color: theme === 'dark' ? '#fff' : '#000',
                       }}
                     >
                       {item.label}

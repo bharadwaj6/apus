@@ -56,7 +56,7 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
     ...legend,
   };
 
-  const tooltip = useTooltip(tooltipRef, tooltipConfig);
+  const { tooltipState, showTooltip, hideTooltip } = useTooltip(tooltipConfig);
 
   // Apply tooltip styles when component mounts
   useEffect(() => {

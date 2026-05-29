@@ -3,6 +3,7 @@
  * @description Renderer component for the BarChart
  */
 import React, { useEffect, RefObject } from 'react';
+import * as d3 from '../d3-shim';
 import { BarChartData } from './types';
 import { createGradient, addGridLines, addLegend } from '../utils/chartUtils';
 import type { Margin } from '../types/base';
@@ -49,7 +50,7 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
   legend,
   tooltip,
 }) => {
-  const { showTooltip, hideTooltip } = useTooltip(tooltipRef, tooltip || {});
+  const { showTooltip, hideTooltip } = useTooltip(tooltip || {});
 
   useEffect(() => {
     const { width: currentWidth, height: currentHeight } = dimensions;

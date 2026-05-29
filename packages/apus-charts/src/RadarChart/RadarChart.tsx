@@ -172,7 +172,7 @@ const RadarChart: React.FC<RadarChartProps> = ({
     padding: typeof legend.padding === 'number' ? `${legend.padding}px` : legend.padding,
     fontFamily: legend.itemFontFamily,
     fontSize: legend.itemFontSize,
-    colors: legend.itemColor || (tooltip.textColor === '#FFFFFF' ? '#333' : '#FFF'), // Basic auto-colors
+    color: legend.itemColor || (tooltip.textColor === '#FFFFFF' ? '#333' : '#FFF'), // Basic auto-colors
   };
 
   const getFlexDirection = () => {
@@ -222,7 +222,7 @@ const RadarChart: React.FC<RadarChartProps> = ({
       {legend.title && (
         <h4
           style={{
-            colors: legend.titleColor || (tooltip.textColor === '#FFFFFF' ? '#333' : '#FFF'),
+            color: legend.titleColor || (tooltip.textColor === '#FFFFFF' ? '#333' : '#FFF'),
             fontSize: legend.titleFontSize,
             fontFamily: legend.titleFontFamily,
             marginBottom: '8px',

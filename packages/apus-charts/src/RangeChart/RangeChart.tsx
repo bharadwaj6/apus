@@ -60,7 +60,7 @@ export const RangeChart: React.FC<RangeChartProps> = ({
             left: tooltipPosition.x,
             top: tooltipPosition.y,
             backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            colors: 'white',
+            color: 'white',
             padding: '8px',
             borderRadius: '4px',
             fontSize: '12px',

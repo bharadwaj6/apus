@@ -224,7 +224,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}
@@ -356,7 +356,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}
@@ -393,7 +393,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   }}
                 />
                 <span>{item.label}</span>
-                <span style={{ colors: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
+                <span style={{ color: theme === 'dark' ? '#aaa' : '#666' }}>({item.value})</span>
               </div>
             );
           })}

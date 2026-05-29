@@ -110,4 +110,12 @@ export interface SegmentedFunnelChartProps
   miniChartHeight?: number;
   trendIndicatorSize?: number;
   analyticsDisplayMode?: 'tooltip' | 'inline' | 'both';
+  // Legacy tooltip props (kept for build compatibility after upstream merge)
+  tooltipBackgroundColor?: string;
+  tooltipTextColor?: string;
+  tooltipPadding?: string;
+  tooltipBorderRadius?: string;
+  tooltipFontSize?: string;
+  tooltipOffsetX?: number;
+  tooltipOffsetY?: number;
 }
