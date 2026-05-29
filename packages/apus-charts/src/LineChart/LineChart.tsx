@@ -45,6 +45,9 @@ export const LineChart: React.FC<LineChartProps> = ({
     itemFontSize: '12px',
     itemColor: '#cccccc',
   },
+  xAxisTextColor,
+  yAxisTextColor,
+  axisLineColor,
   ariaLabel = 'Line chart',
 }) => {
   const theme = useChartTheme();
@@ -62,6 +65,11 @@ export const LineChart: React.FC<LineChartProps> = ({
     ...legend,
     show: showLegend,
   };
+
+  // Axis styling with theme fallbacks (consistent with BarChart)
+  const resolvedXAxisTextColor = xAxisTextColor || theme.axis?.textColor || '#333';
+  const resolvedYAxisTextColor = yAxisTextColor || theme.axis?.textColor || '#333';
+  const resolvedAxisLineColor = axisLineColor || theme.axis?.lineColor || '#ccc';
 
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
 
@@ -108,6 +116,9 @@ export const LineChart: React.FC<LineChartProps> = ({
           responsive={responsive}
           showTooltip={tooltipHook.showTooltip}
           hideTooltip={tooltipHook.hideTooltip}
+          xAxisTextColor={resolvedXAxisTextColor}
+          yAxisTextColor={resolvedYAxisTextColor}
+          axisLineColor={resolvedAxisLineColor}
         />
       </svg>
       <Tooltip state={tooltipHook.tooltipState} config={tooltipConfig} />

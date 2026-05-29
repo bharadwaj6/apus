@@ -29,6 +29,9 @@ type LineChartRendererProps = {
   responsive?: boolean;
   showTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
   hideTooltip?: () => void;
+  xAxisTextColor?: string;
+  yAxisTextColor?: string;
+  axisLineColor?: string;
 };
 
 export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
@@ -49,6 +52,9 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   legend = {},
   showTooltip,
   hideTooltip,
+  xAxisTextColor = '#333',
+  yAxisTextColor = '#333',
+  axisLineColor = '#ccc',
 }) => {
   const { width: currentWidth, height: currentHeight } = dimensions;
 
