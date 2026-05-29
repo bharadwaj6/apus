@@ -67,13 +67,11 @@ export default defineConfig(() => {
         formats: ['es', 'umd', 'cjs'],
       },
       rollupOptions: {
-        external: ['react', 'react-dom', 'd3', '@heroicons/react'],
+        external: ['react', 'react-dom'],
         output: {
           globals: {
             react: 'React',
             'react-dom': 'ReactDOM',
-            d3: 'd3',
-            '@heroicons/react': 'HeroiconsReact',
           },
           exports: 'named',
         },

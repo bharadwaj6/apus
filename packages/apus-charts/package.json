@@ -1,7 +1,7 @@
 {
   "name": "apus",
   "version": "0.2.13",
-  "description": "Apus Charts: A React charting library built with D3.js, offering interactive and customizable charts.",
+  "description": "Apus Charts: A zero-dependency React charting library offering interactive and customizable charts.",
   "homepage": "https://harshattray.github.io/apus/",
   "author": "Harsha Attray (https://github.com/harshattray)",
   "license": "MIT",
@@ -12,7 +12,6 @@
   "keywords": [
     "react",
     "charts",
-    "d3",
     "visualization",
     "typescript",
     "apus",
@@ -45,17 +44,11 @@
     "test": "vitest"
   },
   "peerDependencies": {
-    "d3": "^7.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
-  "dependencies": {
-    "@heroicons/react": "^2.2.0",
-    "d3": "^7.0.0",
-    "d3-regression": "^1.3.10"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/d3": "^7.4.3",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.4",
