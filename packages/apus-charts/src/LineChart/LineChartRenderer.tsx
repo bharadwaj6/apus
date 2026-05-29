@@ -153,9 +153,7 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
 
     // Draw lines and areas for each series
     data.forEach((series, i) => {
-      const seriesColor = Array.isArray(colors)
-        ? colors[i % colors.length]
-        : colors;
+      const seriesColor = Array.isArray(colors) ? colors[i % colors.length] : colors;
 
       // Add area if enabled
       if (showArea) {
