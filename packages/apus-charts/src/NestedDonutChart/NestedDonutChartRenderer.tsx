@@ -1,17 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { NestedDonutChartProps, NestedDonutLevelData } from './types';
-import type { LegendConfig } from '../types/legend';
-import type { TooltipConfig } from '../types/tooltip';
-import { useTooltip } from '../hooks/useTooltip';
+import React, { useState, useCallback } from 'react';
+import { NestedDonutChartProps } from './types';
+import { pieLayout, arcPath } from '../math';
 
 interface NestedDonutChartRendererProps extends NestedDonutChartProps {
-  legend?: LegendConfig;
+  legend?: import('../types/legend').LegendConfig;
   theme?: 'light' | 'dark';
   className?: string;
   style?: React.CSSProperties;
   enableGlow?: boolean;
   glowColor?: string;
   glowBlur?: number;
+  onShowTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+  onHideTooltip?: () => void;
 }
 
 export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> = ({
@@ -34,24 +34,10 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
   cornerRadius = 4,
   padAngle = 0.02,
   tooltip = {},
+  onShowTooltip,
+  onHideTooltip,
 }) => {
   const [activeSlices, setActiveSlices] = useState<Set<string>>(new Set());
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltip.backgroundColor || 'rgba(0,0,0,0.85)',
-    textColor: tooltip.textColor || '#fff',
-    padding: tooltip.padding || '8px 12px',
-    borderRadius: tooltip.borderRadius || '6px',
-    fontSize: tooltip.fontSize || '14px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    zIndex: 1000,
-  });
-
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
 
   const handleSliceClick = useCallback(
     (level: number, data: { label: string; value: number; colors?: string }) => {
@@ -70,175 +56,51 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
     [activeSlices, onSliceClick],
   );
 
-  useEffect(() => {
-    if (!svgRef.current) return;
+  // Pure computed rings using pieLayout + arcPath (no D3, no mutation, no useEffect)
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxRadius = outerRadiusProp !== undefined ? outerRadiusProp : Math.min(width, height) / 2;
+  const minRadius = innerRadiusProp !== undefined ? innerRadiusProp : maxRadius / 3;
+  const totalRingSpace = maxRadius - minRadius;
+  const ringThickness = totalRingSpace > 0 ? totalRingSpace / levels.length : 0;
 
-    const svg = d3.select(svgRef.current);
-    const cx = width / 2;
-    const cy = height / 2;
-    const maxRadius = outerRadiusProp !== undefined ? outerRadiusProp : Math.min(width, height) / 2;
-    const minRadius = innerRadiusProp !== undefined ? innerRadiusProp : maxRadius / 3;
-    const totalRingSpace = maxRadius - minRadius;
-    const ringThickness = totalRingSpace > 0 ? totalRingSpace / levels.length : 0;
+  const DEFAULT_PALETTE = [
+    '#1f77b4',
+    '#ff7f0e',
+    '#2ca02c',
+    '#d62728',
+    '#9467bd',
+    '#8c564b',
+    '#e377c2',
+    '#7f7f7f',
+    '#bcbd22',
+    '#17becf',
+  ];
 
-    // Create pie generators for each level
-    const pieGenerators = Array.from({ length: levels.length }, () =>
-      d3
-        .pie<NestedDonutLevelData[number]>()
-        .value((d) => d.value)
-        .sort(null)
-        .padAngle(padAngle),
-    );
-
-    // Generate pie data for each level
-    const pieData = levels.map((level, index) => pieGenerators[index](level));
-
-    // Clear previous rendering
-    svg.select('g').remove();
-    svg.selectAll('defs').remove(); // Clear defs as well
-
-    const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
-    const defs = svg.append('defs');
-
-    // Add glow filter definition
-    if (enableGlow) {
-      defs
-        .append('filter')
-        .attr('id', 'nested-donut-glow')
-        .attr('x', '-50%')
-        .attr('y', '-50%')
-        .attr('width', '200%')
-        .attr('height', '200%')
-        .call((filter) => {
-          filter
-            .append('feGaussianBlur')
-            .attr('in', 'SourceGraphic')
-            .attr('stdDeviation', glowBlur)
-            .attr('result', 'coloredBlur');
-          // Use feFlood to set the colors, defaulting to slice colors if glowColor is not provided
-          filter
-            .append('feFlood')
-            .attr('flood-colors', glowColor || 'currentColor') // Use currentColor or provided colors
-            .attr('result', 'glowColor');
-          filter
-            .append('feComposite')
-            .attr('in', 'glowColor')
-            .attr('in2', 'coloredBlur')
-            .attr('operator', 'in')
-            .attr('result', 'coloredBlur');
-          filter.append('feMerge').call((merge) => {
-            merge.append('feMergeNode').attr('in', 'coloredBlur');
-            merge.append('feMergeNode').attr('in', 'SourceGraphic');
-          });
-        });
+  const getSliceColor = (
+    levelIdx: number,
+    sliceIdx: number,
+    item?: { color?: string; colors?: string },
+  ) => {
+    if (item?.color) return item.color;
+    if (item?.colors) return item.colors;
+    if (colors && colors[levelIdx] && colors[levelIdx][sliceIdx]) {
+      return colors[levelIdx][sliceIdx];
     }
+    return DEFAULT_PALETTE[(levelIdx * 7 + sliceIdx) % DEFAULT_PALETTE.length];
+  };
 
-    pieData.forEach((levelData, levelIndex) => {
-      const outerRadius = maxRadius - levelIndex * ringThickness;
-      const innerRadius = maxRadius - (levelIndex + 1) * ringThickness;
+  const rings = levels.map((level, levelIndex) => {
+    const slices = pieLayout(level, (d) => d.value);
+    const outerR = maxRadius - levelIndex * ringThickness;
+    const innerR = maxRadius - (levelIndex + 1) * ringThickness;
+    const total = level.reduce((sum, item) => sum + item.value, 0);
+    return { slices, outerR, innerR, levelIndex, total, level };
+  });
 
-      const arcGen = d3
-        .arc<d3.PieArcDatum<NestedDonutLevelData[number]>>()
-        .innerRadius(innerRadius)
-        .outerRadius(outerRadius)
-        .cornerRadius(cornerRadius);
-
-      g.selectAll(`.arc-${levelIndex}`)
-        .data(levelData)
-        .join('path')
-        .attr('class', `arc-${levelIndex}`)
-        .attr('d', arcGen)
-        .attr('fill', (d, i) => {
-          // Use provided colors or a default D3 colors scheme
-          if (colors && colors[levelIndex] && colors[levelIndex][i]) {
-            return colors[levelIndex][i];
-          }
-          return d3.schemeCategory10[i % 10]; // Default D3 colors scheme
-        })
-        .attr('stroke', theme === 'dark' ? '#333' : '#fff')
-        .attr('stroke-width', 1)
-        .style('transition', 'opacity 0.2s')
-        .style('opacity', (d) => {
-          const sliceKey = `${levelIndex}-${d.data.label}`;
-          return activeSlices.size === 0 || activeSlices.has(sliceKey) ? 1 : 0.3;
-        })
-        .on('mouseover', (event, d) => {
-          const totalForLevel = levels[levelIndex].reduce((sum, item) => sum + item.value, 0);
-          const percent =
-            totalForLevel > 0 ? ((d.data.value / totalForLevel) * 100).toFixed(1) : '0.0';
-          const content = `
-            <div style='min-width:120px'>
-              <strong>Level ${levelIndex + 1}: ${d.data.label}</strong>
-              <div style='margin-top:4px'>
-                Value: ${d.data.value}
-                <br/>
-                ${percent}%
-              </div>
-            </div>`;
-          const [x, y] = d3.pointer(event, svgRef.current);
-          tooltip.showTooltip(content, x, y, 0, -10);
-        })
-        .on('mouseout', () => {
-          tooltip.hideTooltip();
-        })
-        .on('click', (event, d) => handleSliceClick(levelIndex, d.data))
-        .style('cursor', onSliceClick ? 'pointer' : 'default')
-        // Apply glow filter if enabled
-        .attr('filter', enableGlow ? 'url(#nested-donut-glow)' : null);
-    });
-
-    // Center label/value
-    if (centerLabel || centerValue) {
-      const textGroup = g
-        .append('g')
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .style('pointer-events', 'none');
-
-      if (centerValue !== undefined) {
-        textGroup
-          .append('text')
-          .attr('y', -8)
-          .style('font-size', 32)
-          .style('font-weight', 'bold')
-          .style('fill', theme === 'dark' ? '#eee' : '#333')
-          .text(centerValue);
-      }
-
-      if (centerLabel) {
-        textGroup
-          .append('text')
-          .attr('y', 12)
-          .style('font-size', 16)
-          .style('fill', theme === 'dark' ? '#ccc' : '#666')
-          .text(centerLabel);
-      }
-    }
-
-    return () => {
-      svg.select('g').remove();
-      svg.selectAll('defs').remove();
-    };
-  }, [
-    levels,
-    width,
-    height,
-    colors,
-    centerLabel,
-    centerValue,
-    activeSlices,
-    theme,
-    enableGlow,
-    glowColor,
-    glowBlur,
-    handleSliceClick,
-    onSliceClick,
-    cornerRadius,
-    innerRadiusProp,
-    outerRadiusProp,
-    padAngle,
-    tooltip,
-  ]);
+  // Legend color helper (no d3)
+  const getLegendColor = (levelIdx: number, item: any, itemIdx: number) =>
+    getSliceColor(levelIdx, itemIdx, item);
 
   const containerStyle: React.CSSProperties = {
     display: 'flex',
@@ -298,12 +160,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         width: '12px',
                         height: '12px',
-                        backgroundColor:
-                          item.colors ||
-                          d3.schemeCategory10[
-                            levelIdx * level.length + (level.indexOf(item) % 10)
-                          ] ||
-                          '#ccc',
+                        backgroundColor: getLegendColor(levelIdx, item, level.indexOf(item)),
                         borderRadius: '2px',
                       }}
                     />
@@ -325,8 +182,100 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
       )}
 
       <div style={chartStyle}>
-        <svg ref={svgRef} width={width} height={height} style={{ display: 'block' }}></svg>
-        <div ref={tooltipRef} className="nested-donut-tooltip"></div>
+        <svg width={width} height={height} style={{ display: 'block' }}>
+          <defs>
+            {enableGlow && (
+              <filter id="nested-donut-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation={glowBlur} result="coloredBlur" />
+                <feFlood floodColor={glowColor || 'currentColor'} result="glowColor" />
+                <feComposite in="glowColor" in2="coloredBlur" operator="in" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            )}
+          </defs>
+          <g transform={`translate(${cx},${cy})`}>
+            {rings.map((ring) => (
+              <g key={ring.levelIndex}>
+                {ring.slices.map((slice, i) => {
+                  const dataItem = slice.data as {
+                    label: string;
+                    value: number;
+                    color?: string;
+                    colors?: string;
+                  };
+                  const sliceKey = `${ring.levelIndex}-${dataItem.label}`;
+                  const isDimmed = activeSlices.size > 0 && !activeSlices.has(sliceKey);
+                  const fillColor = getSliceColor(ring.levelIndex, i, dataItem);
+                  const totalForLevel = ring.total;
+                  const percent =
+                    totalForLevel > 0 ? ((dataItem.value / totalForLevel) * 100).toFixed(1) : '0.0';
+                  return (
+                    <path
+                      key={dataItem.label}
+                      d={arcPath(ring.innerR, ring.outerR, slice.startAngle, slice.endAngle)}
+                      fill={fillColor}
+                      stroke={theme === 'dark' ? '#333' : '#fff'}
+                      strokeWidth={1}
+                      opacity={isDimmed ? 0.3 : 1}
+                      style={{
+                        transition: 'opacity 0.2s',
+                        cursor: onSliceClick ? 'pointer' : 'default',
+                      }}
+                      onMouseOver={(e) => {
+                        const content = `
+                          <div style='min-width:120px'>
+                            <strong>Level ${ring.levelIndex + 1}: ${dataItem.label}</strong>
+                            <div style='margin-top:4px'>
+                              Value: ${dataItem.value}
+                              <br/>
+                              ${percent}%
+                            </div>
+                          </div>`;
+                        onShowTooltip?.(content, e);
+                      }}
+                      onMouseOut={() => {
+                        onHideTooltip?.();
+                      }}
+                      onClick={() => handleSliceClick(ring.levelIndex, dataItem)}
+                      filter={enableGlow ? 'url(#nested-donut-glow)' : undefined}
+                    />
+                  );
+                })}
+              </g>
+            ))}
+            {/* Center label/value */}
+            {(centerLabel || centerValue) && (
+              <g textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: 'none' }}>
+                {centerValue !== undefined && (
+                  <text
+                    y={-8}
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 'bold',
+                      fill: theme === 'dark' ? '#eee' : '#333',
+                    }}
+                  >
+                    {centerValue}
+                  </text>
+                )}
+                {centerLabel && (
+                  <text
+                    y={12}
+                    style={{
+                      fontSize: 16,
+                      fill: theme === 'dark' ? '#ccc' : '#666',
+                    }}
+                  >
+                    {centerLabel}
+                  </text>
+                )}
+              </g>
+            )}
+          </g>
+        </svg>
       </div>
 
       {legend.position === 'bottom' && (
@@ -355,12 +304,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         width: '12px',
                         height: '12px',
-                        backgroundColor:
-                          item.colors ||
-                          d3.schemeCategory10[
-                            levelIdx * level.length + (level.indexOf(item) % 10)
-                          ] ||
-                          '#ccc',
+                        backgroundColor: getLegendColor(levelIdx, item, level.indexOf(item)),
                         borderRadius: '2px',
                       }}
                     />
@@ -407,12 +351,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         width: '12px',
                         height: '12px',
-                        backgroundColor:
-                          item.colors ||
-                          d3.schemeCategory10[
-                            levelIdx * level.length + (level.indexOf(item) % 10)
-                          ] ||
-                          '#ccc',
+                        backgroundColor: getLegendColor(levelIdx, item, level.indexOf(item)),
                         borderRadius: '2px',
                       }}
                     />
@@ -459,12 +398,7 @@ export const NestedDonutChartRenderer: React.FC<NestedDonutChartRendererProps> =
                       style={{
                         width: '12px',
                         height: '12px',
-                        backgroundColor:
-                          item.colors ||
-                          d3.schemeCategory10[
-                            levelIdx * level.length + (level.indexOf(item) % 10)
-                          ] ||
-                          '#ccc',
+                        backgroundColor: getLegendColor(levelIdx, item, level.indexOf(item)),
                         borderRadius: '2px',
                       }}
                     />
