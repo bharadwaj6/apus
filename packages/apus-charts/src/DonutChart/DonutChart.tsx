@@ -218,8 +218,6 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
             if (onSliceClick) onSliceClick(data);
           }}
           visibleLabels={visibleLabels}
-          onShowTooltip={showTooltip}
-          onHideTooltip={hideTooltip}
         />
       </svg>
 

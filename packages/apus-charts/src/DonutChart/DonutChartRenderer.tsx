@@ -2,16 +2,15 @@
  * @file DonutChartRenderer.tsx
  * @description Renderer component for the DonutChart
  */
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { DonutChartData } from './types';
 import { useTooltip } from '../hooks/useTooltip';
 import type { LegendConfig, TooltipConfig } from '../types';
 import { pieLayout, arcPath } from '../math';
 
 interface DonutChartRendererProps {
-  data: d3.PieArcDatum<DonutChartData>[];
-  svgRef: React.RefObject<SVGSVGElement>;
-  tooltipRef: React.RefObject<HTMLDivElement>;
+  // Now receives raw data (with optional color injected by parent), not PieArcDatum
+  data: DonutChartData[];
   width: number;
   height: number;
   innerRadius: number;
@@ -31,7 +30,7 @@ interface DonutChartRendererProps {
 }
 
 const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
-  data: arcData,
+  data: rawData,
   width,
   height,
   innerRadius,
@@ -49,16 +48,16 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
   glowColor,
   glowBlur = 5,
 }) => {
-  const total = useMemo(() => arcData.reduce((sum, d) => sum + d.data.value, 0), [arcData]);
-
-  // New React-state tooltip (replaces old d3 + Ref version)
-  const { showTooltip: showT, hideTooltip } = useTooltip(tooltip || {});
-
-  // Zero-dep pie + arc (replaces d3.pie + d3.arc entirely)
+  // Compute slices using the modern pieLayout (raw data, not PieArcDatum)
   const slices = useMemo(() => {
-    const raw = arcData.map((d) => d.data);
-    return pieLayout(raw, (d) => d.value, 0, 2 * Math.PI);
-  }, [arcData]);
+    return pieLayout(rawData, (d) => d.value, 0, 2 * Math.PI);
+  }, [rawData]);
+
+  // Total for percentage calculations (use visible slices for consistency with legend)
+  const total = useMemo(() => {
+    const visible = rawData.filter((d) => visibleLabels.includes(d.label));
+    return visible.reduce((sum, d) => sum + (d.value || 0), 0);
+  }, [rawData, visibleLabels]);
 
   const getSlicePath = (start: number, end: number, r: number) =>
     arcPath(innerRadius, r, start, end);
@@ -87,10 +86,10 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
 
       {/* Donut Arcs (Slices) — pure computed JSX */}
       {slices.map((slice, i) => {
-        const d = slice.data;
+        const d = slice.data; // this is now the original DonutChartData item
         const percent = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
         const isVisible = visibleLabels.includes(d.label);
-        const r = isVisible ? outerRadius : outerRadius; // keep simple, hover can be added via scale later
+        const r = isVisible ? outerRadius : outerRadius;
 
         return (
           <path
@@ -104,10 +103,9 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
             onMouseOver={
               showTooltip
                 ? (e) => {
-                    // Use client coords + new hook (replaces d3.pointer)
                     showT(
                       `<div style="min-width:120px"><strong>${d.label}</strong><div style="margin-top:4px">Value: ${d.value}<br/>${percent}%</div></div>`,
-                      e
+                      e,
                     );
                   }
                 : undefined
@@ -166,7 +164,11 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
                 y={ly}
                 textAnchor={textAnchor}
                 dominantBaseline="middle"
-                style={{ fontSize: legend?.itemFontSize || '12px', fill: legend?.itemColor || '#333', pointerEvents: 'none' }}
+                style={{
+                  fontSize: legend?.itemFontSize || '12px',
+                  fill: legend?.itemColor || '#333',
+                  pointerEvents: 'none',
+                }}
               >
                 {d.label} ({percent}%)
               </text>
