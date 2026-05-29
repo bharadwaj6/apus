@@ -12,7 +12,6 @@
   "keywords": [
     "react",
     "charts",
-    "d3",
     "visualization",
     "typescript",
     "apus",
@@ -30,30 +29,24 @@
     "dist"
   ],
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+
   "scripts": {
     "dev": "vite",
-    "build:lib": "npm run build --workspace=packages/apus-charts",
-    "build:app-demo": "npm run build --workspace=apus-demo",
-    "dev:demo": "npm run styleguide --workspace=packages/apus-demo",
-    "build:demo": "npm run styleguide:build --workspace=packages/apus-demo",
-    "deploy:styleguide": "npm run build:demo && npm run deploy --workspace=packages/apus-demo",
+    "build:lib": "pnpm --filter apus run build",
+    "build:app-demo": "pnpm --filter apus-demo run build",
+    "dev:demo": "pnpm --filter apus-demo run styleguide",
+    "build:demo": "pnpm --filter apus-demo run styleguide:build",
+    "deploy:styleguide": "pnpm run build:demo && pnpm --filter apus-demo run deploy",
     "lint": "eslint .",
     "preview": "vite preview",
     "prepare": "husky",
-    "test": "npm run test --workspace=packages/apus-charts"
+    "test": "pnpm --filter apus run test"
   },
   "peerDependencies": {
-    "d3": "^7.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
-  "dependencies": {
-    "@heroicons/react": "^2.2.0",
-    "d3": "^7.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@microsoft/api-extractor": "^7.52.8",
