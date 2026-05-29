@@ -1,6 +1,6 @@
 # Apus - React Chart Library
 
-A powerful and customizable chart library for React applications, built with D3.js and TypeScript.
+A zero-dependency React charting library for React applications, built with TypeScript.
 
 [![npm version](https://img.shields.io/npm/v/apus.svg)](https://www.npmjs.com/package/apus)
 [![yarn version](https://img.shields.io/npm/v/apus?label=yarn)](https://yarnpkg.com/package?name=apus)
@@ -14,7 +14,7 @@ A powerful and customizable chart library for React applications, built with D3.
 ## Features
 
 - 🎯 Built with React 18 and TypeScript
-- 📊 Powered by D3.js for powerful data visualization
+- 📊 Zero-dependency: pure math + React (no D3 at runtime)
 - 🎨 Customizable and responsive charts
 - 📦 Lightweight and easy to integrate
 - 🔍 Type-safe with TypeScript support

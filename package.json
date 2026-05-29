@@ -1,7 +1,7 @@
 {
   "name": "apus",
   "version": "0.2.15",
-  "description": "Apus Charts: A React charting library built with D3.js, offering interactive and customizable charts.",
+  "description": "Apus Charts: A zero-dependency React charting library offering interactive and customizable charts.",
   "homepage": "https://harshattray.github.io/apus/",
   "author": "Harsha Attray (https://github.com/harshattray)",
   "license": "MIT",
@@ -22,23 +22,12 @@
     "interactive charts"
   ],
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "private": true,
 
   "scripts": {
-    "dev": "vite",
     "build:lib": "pnpm --filter apus run build",
     "build:app-demo": "pnpm --filter apus-demo run build",
-    "dev:demo": "pnpm --filter apus-demo run styleguide",
-    "build:demo": "pnpm --filter apus-demo run styleguide:build",
-    "deploy:styleguide": "pnpm run build:demo && pnpm --filter apus-demo run deploy",
     "lint": "eslint .",
-    "preview": "vite preview",
     "prepare": "husky",
     "test": "pnpm --filter apus run test"
   },
