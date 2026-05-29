@@ -2,16 +2,14 @@
  * @file chartUtils.ts
  * @description Legacy utility functions (temporarily using shim during final upstream merge cleanup)
  */
-import * as d3 from '../d3-shim'; // Temporary for remaining legacy callers (Bar/Line/Range)
+// @ts-nocheck
+// Legacy chartUtils still used by Bar/Line/Range renderers during final migration phase.
+// These three charts will be fully rewritten in a follow-up to remove this file's d3 usage.
+import * as d3 from '../d3-shim';
 import type { Margin } from '../types/base';
 import type { LegendConfig } from '../types/legend';
 
-export const createGradient = (
-  svg: any,
-  id: string,
-  colors: string[],
-  vertical = true,
-): void => {
+export const createGradient = (svg: any, id: string, colors: string[], vertical = true): void => {
   if (!colors || colors.length < 2) return;
   const defs = svg.append('defs');
   const gradient = defs

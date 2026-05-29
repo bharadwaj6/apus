@@ -3,11 +3,14 @@
  * @description Main LineChart component
  * @author Harsha Attray
  */
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { LineChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
 import { LineChartRenderer } from './LineChartRenderer';
+import type { LegendConfig } from '../types/legend';
+import type { TooltipConfig } from '../types/tooltip';
+import { Tooltip } from '../components/Tooltip';
 
 /**
  * LineChart component for rendering line charts
@@ -44,23 +47,23 @@ export const LineChart: React.FC<LineChartProps> = ({
   ariaLabel = 'Line chart',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Use custom hooks
+  // Merge tooltip config with theme
+  const tooltipConfig: TooltipConfig = {
+    ...theme.tooltip,
+    ...tooltip,
+  };
+
+  // Merge legend
+  const legendConfig: LegendConfig = {
+    ...theme.legend,
+    ...legend,
+    show: showLegend,
+  };
+
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltip.backgroundColor,
-    textColor: tooltip.textColor,
-    padding: tooltip.padding,
-    borderRadius: tooltip.borderRadius,
-    fontSize: tooltip.fontSize,
-  });
 
-  // Apply tooltip styles when component mounts
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
+  const tooltipHook = useTooltip(tooltipConfig);
 
   const paddingBottom = responsive ? `${(height / width) * 100}%` : undefined;
 
@@ -75,7 +78,6 @@ export const LineChart: React.FC<LineChartProps> = ({
       }}
     >
       <svg
-        ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
         style={{
@@ -86,11 +88,9 @@ export const LineChart: React.FC<LineChartProps> = ({
         aria-label={ariaLabel}
       >
         <LineChartRenderer
-          svgRef={svgRef}
-          tooltipRef={tooltipRef}
           data={data}
           dimensions={dimensions}
-          colors={colors}
+          colors={Array.isArray(colors) ? colors : [colors]}
           areaColor={areaColor}
           pointColor={pointColor}
           margin={margin}
@@ -102,10 +102,13 @@ export const LineChart: React.FC<LineChartProps> = ({
           lineGradientColors={lineGradientColors}
           showArea={showArea}
           showLegend={showLegend}
-          legend={legend}
+          legend={legendConfig}
+          responsive={responsive}
+          showTooltip={tooltipHook.showTooltip}
+          hideTooltip={tooltipHook.hideTooltip}
         />
       </svg>
-      <div ref={tooltipRef} className="tooltip" style={{ opacity: 0 }} />
+      <Tooltip state={tooltipHook.tooltipState} config={tooltipConfig} />
     </div>
   );
 };

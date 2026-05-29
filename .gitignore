@@ -25,3 +25,11 @@ dist-ssr
 
 # Styleguidist build output
 styleguide/
+
+# One-off migration / refactor artifacts (prevent future clutter)
+plan.md
+fix-props.cjs
+fix-props.js
+*.rej
+*.orig
+*.patch

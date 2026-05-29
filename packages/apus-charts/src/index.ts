@@ -40,8 +40,12 @@ export { GaugeDonutChart } from './GaugeDonutChart/GaugeDonutChart';
 export type { GaugeDonutChartProps, GaugeDonutData, GradientStop } from './GaugeDonutChart/types';
 
 // Export NestedDonutChart and its types
-export { default as NestedDonutChart } from './NestedDonutChart';
-export type { NestedDonutChartProps, NestedDonutLevelData, NestedDonutDataPoint } from './NestedDonutChart/types';
+export { NestedDonutChart } from './NestedDonutChart';
+export type {
+  NestedDonutChartProps,
+  NestedDonutLevelData,
+  NestedDonutDataPoint,
+} from './NestedDonutChart/types';
 
 // Export StackedBarChart
 export { StackedBarChart } from './StackedBarChart/StackedBarChart';
@@ -58,6 +62,8 @@ export type {
 
 // Export FunnelChart
 export { default as FunnelChart } from './FunnelChart';
+export { default as TimeSeriesFunnelChart } from './FunnelChart/TimeSeriesFunnelChart';
+export { default as SegmentedFunnelChart } from './FunnelChart/SegmentedFunnelChart';
 export type {
   FunnelData,
   FunnelChartProps,

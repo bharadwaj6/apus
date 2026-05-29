@@ -1,24 +1,22 @@
 /**
  * @file BarChartRenderer.tsx
- * @description Renderer component for the BarChart
+ * @description Renderer component for the BarChart (modern zero-dep version)
  */
-import React, { useEffect, RefObject } from 'react';
-import * as d3 from '../d3-shim';
+import React from 'react';
 import { BarChartData } from './types';
-import { createGradient, addGridLines, addLegend } from '../utils/chartUtils';
 import type { Margin } from '../types/base';
-import { useTooltip } from '../hooks/useTooltip';
+import type { Dimensions } from '../hooks/useChartDimensions';
 import type { LegendConfig } from '../types/legend';
-import type { TooltipConfig } from '../types/tooltip';
+import { XAxis, YAxis } from '../components/Axis';
+import { bandScale, linearScale, maxOf } from '../math';
 
+// Modern renderer props (pure JSX, callbacks for tooltip)
 type BarChartRendererProps = {
-  svgRef: RefObject<SVGSVGElement>;
-  tooltipRef: RefObject<HTMLDivElement>;
   data: BarChartData[];
-  dimensions: { width: number; height: number };
+  dimensions: Dimensions;
+  margin: Margin;
   colors: string[];
   gradientColors?: string[];
-  margin: Margin;
   showXAxis: boolean;
   showYAxis: boolean;
   showGridLines: boolean;
@@ -28,17 +26,16 @@ type BarChartRendererProps = {
   yAxisTicks: number;
   showLegend: boolean;
   legend?: LegendConfig;
-  tooltip?: TooltipConfig;
+  showTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+  hideTooltip?: () => void;
 };
 
 export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
-  svgRef,
-  tooltipRef,
   data,
   dimensions,
+  margin,
   colors,
   gradientColors,
-  margin,
   showXAxis,
   showYAxis,
   showGridLines,
@@ -47,155 +44,176 @@ export const BarChartRenderer: React.FC<BarChartRendererProps> = ({
   axisLineColor,
   yAxisTicks,
   showLegend,
-  legend,
-  tooltip,
+  legend = {},
+  showTooltip,
+  hideTooltip,
 }) => {
-  const { showTooltip, hideTooltip } = useTooltip(tooltip || {});
+  const { width: currentWidth, height: currentHeight } = dimensions;
 
-  useEffect(() => {
-    const { width: currentWidth, height: currentHeight } = dimensions;
+  if (!data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0) {
+    return null;
+  }
 
-    if (!svgRef.current || !data || data.length === 0 || currentWidth <= 0 || currentHeight <= 0)
-      return;
+  // Inner dimensions (pure calculation)
+  let innerWidth = currentWidth - margin.left - margin.right;
+  let innerHeight = currentHeight - margin.top - margin.bottom;
 
-    const svg = d3.select(svgRef.current);
-    svg.select('g.chart-root').remove();
-    svg.selectAll('defs').remove();
+  if (innerWidth <= 0 || innerHeight <= 0) return null;
 
-    // Adjust bottom margin if legend is at the bottom
-    const adjustedMargin = { ...margin };
-    if (showLegend && legend?.position === 'bottom') {
-      adjustedMargin.bottom += 30; // Add extra space for legend
-    }
+  // Simple legend space reservation (bottom only for basic support)
+  let legendHeight = 0;
+  if (showLegend) {
+    legendHeight = 32;
+    innerHeight -= legendHeight;
+  }
 
-    const innerWidth = currentWidth - adjustedMargin.left - adjustedMargin.right;
-    const innerHeight = currentHeight - adjustedMargin.top - adjustedMargin.bottom;
+  if (innerWidth <= 0 || innerHeight <= 0) return null;
 
-    // Ensure inner dimensions are non-negative
-    if (innerWidth <= 0 || innerHeight <= 0) return;
+  const chartX = margin.left;
+  const chartY = margin.top;
 
-    // Create gradient if needed
+  // Data
+  const categories = data.map((d) => d.label);
+  const values = data.map((d) => d.value);
+  const maxValue = maxOf(values);
+
+  // Scales (modern math, replaces d3.scaleBand / scaleLinear)
+  const xScale = bandScale(categories, [0, innerWidth], 0.15, 0.08);
+  const yScale = linearScale([0, maxValue || 1], [innerHeight, 0]);
+
+  const barWidth = xScale.bandwidth ? xScale.bandwidth() : 20;
+
+  // Colors
+  const getBarColor = (index: number) => {
     if (gradientColors && gradientColors.length >= 2) {
-      createGradient(svg, 'barGradient', gradientColors, true);
+      // Simple gradient fallback via CSS (or could add <defs> here)
+      return `url(#barGradient)`;
     }
+    return colors[index % colors.length] || '#6a93d1';
+  };
 
-    const x = d3
-      .scaleBand()
-      .domain(data.map((d) => d.label))
-      .range([0, innerWidth])
-      .padding(0.1);
+  // Gradient definition if needed (pure JSX)
+  const gradientDef =
+    gradientColors && gradientColors.length >= 2 ? (
+      <defs>
+        <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={gradientColors[0]} />
+          <stop offset="100%" stopColor={gradientColors[1]} />
+        </linearGradient>
+      </defs>
+    ) : null;
 
-    const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(data, (d) => d.value) || 0])
-      .nice()
-      .range([innerHeight, 0]);
+  // Bars as pure JSX
+  const bars = data.map((d, i) => {
+    const x = xScale(d.label) ?? 0;
+    const barHeight = Math.max(0, innerHeight - yScale(d.value));
+    const y = yScale(d.value);
 
-    const g = svg
-      .append('g')
-      .attr('class', 'chart-root')
-      .attr('transform', `translate(${adjustedMargin.left},${adjustedMargin.top})`);
-
-    // Add Y axis
-    if (showYAxis) {
-      g.append('g')
-        .call(d3.axisLeft(y).ticks(yAxisTicks))
-        .selectAll('text')
-        .style('font-size', '10px')
-        .style('fill', yAxisTextColor);
-
-      // Add grid lines if enabled
-      if (showGridLines) {
-        addGridLines(g, x, y, innerWidth, innerHeight, false, true, yAxisTicks, axisLineColor);
+    const onMouseEnter = (e: React.MouseEvent<SVGRectElement>) => {
+      if (showTooltip) {
+        const content = `<strong>${d.label}</strong>: ${d.value}`;
+        showTooltip(content, e);
       }
-    }
+    };
 
-    // Add X axis
-    if (showXAxis) {
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x))
-        .selectAll('text')
-        .style('font-size', '10px')
-        .style('fill', xAxisTextColor);
+    const onMouseLeave = () => {
+      hideTooltip?.();
+    };
 
-      // Add grid lines if enabled
-      if (showGridLines) {
-        addGridLines(g, x, y, innerWidth, innerHeight, true, false, yAxisTicks, axisLineColor);
-      }
-    }
+    return (
+      <rect
+        key={i}
+        x={x}
+        y={y}
+        width={Math.max(0, barWidth)}
+        height={Math.max(0, barHeight)}
+        fill={getBarColor(i)}
+        rx={2}
+        ry={2}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={{ cursor: 'pointer' }}
+      />
+    );
+  });
 
-    // Style axis lines and ticks
-    g.selectAll('.domain, .tick line').attr('stroke', axisLineColor);
+  // Simple bottom legend (if enabled)
+  let legendNode: React.ReactNode = null;
+  if (showLegend && data.length > 0) {
+    const legY = chartY + innerHeight + 18;
+    legendNode = (
+      <g transform={`translate(${chartX}, ${legY})`}>
+        {data.slice(0, 6).map((d, i) => {
+          const x = i * 90;
+          return (
+            <g key={i} transform={`translate(${x}, 0)`}>
+              <rect width={12} height={12} rx={2} fill={getBarColor(i)} />
+              <text x={16} y={10} fontSize="11" fill={legend.itemColor || '#333'}>
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  }
 
-    // Add bars
-    g.selectAll('rect')
-      .data(data)
-      .enter()
-      .append('rect')
-      .attr('x', (d) => x(d.label)!)
-      .attr('y', innerHeight)
-      .attr('height', 0)
-      .attr('width', x.bandwidth())
-      .attr('fill', (d, i) => {
-        if (gradientColors && gradientColors.length >= 2) {
-          return 'url(#barGradient)';
-        }
-        return colors[i % colors.length];
-      })
-      .transition() // Add transition
-      .duration(750) // Duration of the transition
-      .attr('y', (d) => y(d.value)) // Animate to correct y position
-      .attr('height', (d) => innerHeight - y(d.value)); // Animate to correct height
+  return (
+    <g transform={`translate(${chartX}, ${chartY})`}>
+      {gradientDef}
 
-    // Add tooltip interactions
-    g.selectAll('rect')
-      .on('mouseover', (event, d) => {
-        const dataPoint = d as BarChartData;
-        const [mouseX, mouseY] = d3.pointer(event);
+      {/* Grid lines (simple manual implementation) */}
+      {showGridLines && showYAxis && (
+        <g className="grid">
+          {yScale.ticks(5).map((tick, i) => {
+            const y = yScale(tick);
+            return (
+              <line
+                key={i}
+                x1={0}
+                x2={innerWidth}
+                y1={y}
+                y2={y}
+                stroke={axisLineColor}
+                strokeOpacity={0.2}
+              />
+            );
+          })}
+        </g>
+      )}
 
-        showTooltip(
-          `<strong>${dataPoint.label}:</strong> ${dataPoint.value}`,
-          mouseX + adjustedMargin.left,
-          mouseY + adjustedMargin.top - 30,
-        );
-      })
-      .on('mouseout', hideTooltip);
+      {/* Bars */}
+      <g className="bars">{bars}</g>
 
-    // Add legend if enabled
-    if (showLegend && data.length > 0) {
-      const labels = legend?.itemColor ? data.map((d) => d.label) : data.map((d) => d.label);
+      {/* Axes */}
+      {showXAxis && (
+        <g transform={`translate(0, ${innerHeight})`}>
+          <XAxis
+            scale={xScale as any}
+            innerHeight={0}
+            ticks={categories}
+            textColor={xAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
 
-      addLegend(
-        g,
-        labels,
-        colors,
-        legend || {},
-        innerWidth,
-        innerHeight,
-        adjustedMargin,
-        gradientColors ? ['barGradient'] : undefined,
-      );
-    }
-  }, [
-    data,
-    colors,
-    margin,
-    dimensions,
-    showXAxis,
-    showYAxis,
-    xAxisTextColor,
-    yAxisTextColor,
-    axisLineColor,
-    yAxisTicks,
-    gradientColors,
-    showGridLines,
-    showLegend,
-    legend,
-    svgRef,
-    showTooltip,
-    hideTooltip,
-  ]);
+      {showYAxis && (
+        <g>
+          <YAxis
+            scale={yScale as any}
+            innerWidth={innerWidth}
+            tickCount={yAxisTicks}
+            textColor={yAxisTextColor}
+            lineColor={axisLineColor}
+            fontSize={10}
+          />
+        </g>
+      )}
 
-  return null;
+      {/* Legend */}
+      {legendNode}
+    </g>
+  );
 };
