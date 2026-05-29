@@ -3,7 +3,9 @@
  * @description Legacy utility functions (temporarily using shim during final upstream merge cleanup)
  */
 // @ts-nocheck
-import * as d3 from '../d3-shim'; // Temporary for remaining legacy callers (Bar/Line/Range)
+// Legacy chartUtils still used by Bar/Line/Range renderers during final migration phase.
+// These three charts will be fully rewritten in a follow-up to remove this file's d3 usage.
+import * as d3 from '../d3-shim';
 import type { Margin } from '../types/base';
 import type { LegendConfig } from '../types/legend';
 

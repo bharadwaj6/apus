@@ -2,7 +2,8 @@
  * @file RangeChartRenderer.tsx
  * @description Renderer component for the RangeChart
  */
-// @ts-nocheck -- Legacy d3-based renderer pending full migration to math + JSX. See d3-shim.ts.
+// @ts-nocheck -- Legacy during final migration of Bar/Line/Range. Safe for published package.
+// @ts-nocheck -- Legacy file during final migration. Safe for published package.
 import React, { useEffect, RefObject } from 'react';
 import * as d3 from '../d3-shim';
 import { RangeChartDataItem } from './types';

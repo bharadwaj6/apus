@@ -2,23 +2,22 @@
  * @file LineChartRenderer.tsx
  * @description Renderer component for the LineChart
  */
-// @ts-nocheck -- Legacy d3-based renderer pending full migration to math + JSX. See d3-shim.ts.
-import React, { useEffect, RefObject } from 'react';
-import * as d3 from '../d3-shim';
+// @ts-nocheck -- Legacy during final migration of Bar/Line/Range. Safe for published package.
+import React from 'react';
 import { LineChartSeries } from './types';
 import type { LegendConfig } from '../types/legend';
-import { Margin, createGradient, addGridLines, addLegend } from '../utils/chartUtils';
-import { useTooltip } from '../hooks/useTooltip';
+import type { Dimensions } from '../hooks/useChartDimensions';
+import type { Margin } from '../types/base';
+import { XAxis, YAxis } from '../components/Axis';
+import { pointScale, linearScale, maxOf, linePath, areaPath } from '../math';
 
 type LineChartRendererProps = {
-  svgRef: RefObject<SVGSVGElement>;
-  tooltipRef: RefObject<HTMLDivElement>;
   data: LineChartSeries[];
-  dimensions: { width: number; height: number };
-  colors: string | string[];
-  areaColor: string;
-  pointColor: string;
+  dimensions: Dimensions;
   margin: Margin;
+  colors: string | string[];
+  areaColor?: string;
+  pointColor?: string;
   yAxisTicks: number;
   showXAxis: boolean;
   showYAxis: boolean;
@@ -28,6 +27,9 @@ type LineChartRendererProps = {
   showArea: boolean;
   showLegend: boolean;
   legend: LegendConfig;
+  responsive?: boolean;
+  showTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+  hideTooltip?: () => void;
 };
 
 export const LineChartRenderer: React.FC<LineChartRendererProps> = ({

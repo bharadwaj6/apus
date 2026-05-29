@@ -3,7 +3,7 @@
  * @description Main BarChart component
  * @author Harsha Attray
  */
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { BarChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
@@ -11,6 +11,7 @@ import { BarChartRenderer } from './BarChartRenderer';
 import { useChartTheme } from '../theme/ChartThemeContext';
 import type { LegendConfig } from '../types/legend';
 import type { TooltipConfig } from '../types/tooltip';
+import { Tooltip } from '../components/Tooltip';
 
 /**
  * BarChart component for rendering bar charts
@@ -41,8 +42,6 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
   const { tooltip: tooltipProp } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Merge tooltip config with theme
   const tooltipConfig: TooltipConfig = {
@@ -54,16 +53,13 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
   const legendConfig: LegendConfig = {
     ...theme.legend,
     ...legend,
+    show: showLegend,
   };
 
-  const { tooltipState, showTooltip, hideTooltip } = useTooltip(tooltipConfig);
-
-  // Apply tooltip styles when component mounts
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
-
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
+
+  // Modern tooltip (config only, returns state + callbacks)
+  const tooltip = useTooltip(tooltipConfig);
 
   const paddingBottom = responsive ? `${(height / width) * 100}%` : undefined;
 
@@ -78,7 +74,6 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
       }}
     >
       <svg
-        ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
         style={{
@@ -89,13 +84,11 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
         aria-label={ariaLabel}
       >
         <BarChartRenderer
-          svgRef={svgRef}
-          tooltipRef={tooltipRef}
           data={data}
           dimensions={dimensions}
-          colors={colors}
-          gradientColors={gradientColors}
           margin={margin}
+          colors={Array.isArray(colors) ? colors : ([colors].filter(Boolean) as string[])}
+          gradientColors={gradientColors}
           showXAxis={showXAxis}
           showYAxis={showYAxis}
           showGridLines={showGridLines}
@@ -105,9 +98,11 @@ export const BarChart: React.FC<BarChartProps> = (props) => {
           yAxisTicks={yAxisTicks}
           showLegend={showLegend}
           legend={legendConfig}
+          showTooltip={tooltip.showTooltip}
+          hideTooltip={tooltip.hideTooltip}
         />
       </svg>
-      <div ref={tooltipRef} className="tooltip" style={{ opacity: 0 }} />
+      <Tooltip state={tooltip.tooltipState} config={tooltipConfig} />
     </div>
   );
 };

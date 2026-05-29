@@ -228,9 +228,6 @@ export const MultipleSeriesScatterChart = () => {
         textColor: '#333333',
         borderRadius: '4px',
       }}
-      tooltip={{
-        padding: '10px',
-      }}
       tooltipFormat={(data: ScatterHoveredData) => `
         <div>
           <strong style="color: #333;">${data.seriesName || data.seriesId || 'Unknown'}</strong>
