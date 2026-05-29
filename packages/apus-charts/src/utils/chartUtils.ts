@@ -1,97 +1,93 @@
 /**
  * @file chartUtils.ts
- * @description Utility functions for chart components
+ * @description Utility functions for chart components (rewritten as pure JSX for zero-dep)
  */
+import React from 'react';
 import type { Margin } from '../types/base';
-import * as d3 from './d3-shim'; // TEMP during migration finish
 import type { LegendConfig } from '../types/legend';
 
 /**
- * Creates a gradient definition for a chart
- * @param svg - D3 selection of the SVG element
- * @param id - ID for the gradient
- * @param colors - Array of colors for the gradient
- * @param vertical - Whether the gradient should be vertical (true) or horizontal (false)
+ * Returns a <defs> element containing a linearGradient (pure JSX replacement for old d3 version)
  */
 export const createGradient = (
-  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
   id: string,
   colors: string[],
   vertical = true,
-): void => {
-  if (!colors || colors.length < 2) return;
-
-  const defs = svg.append('defs');
-  const gradient = defs
-    .append('linearGradient')
-    .attr('id', id)
-    .attr('x1', vertical ? '0%' : '0%')
-    .attr('y1', vertical ? '0%' : '0%')
-    .attr('x2', vertical ? '0%' : '100%')
-    .attr('y2', vertical ? '100%' : '0%');
-
-  colors.forEach((color, i) => {
-    gradient
-      .append('stop')
-      .attr('offset', `${(i / (colors.length - 1)) * 100}%`)
-      .attr('stop-color', color);
-  });
+): React.ReactElement => {
+  if (!colors || colors.length < 2) return <defs key={id} />;
+  return (
+    <defs key={id}>
+      <linearGradient
+        id={id}
+        x1={vertical ? '0%' : '0%'}
+        y1={vertical ? '0%' : '0%'}
+        x2={vertical ? '0%' : '100%'}
+        y2={vertical ? '100%' : '0%'}
+      >
+        {colors.map((color, i) => (
+          <stop
+            key={i}
+            offset={`${(i / (colors.length - 1)) * 100}%`}
+            stopColor={color}
+          />
+        ))}
+      </linearGradient>
+    </defs>
+  );
 };
 
 /**
- * Adds grid lines to a chart
- * @param g - D3 selection of the group element
- * @param x - X scale
- * @param y - Y scale
- * @param width - Width of the chart
- * @param height - Height of the chart
- * @param showXGrid - Whether to show X grid lines
- * @param showYGrid - Whether to show Y grid lines
- * @param ticks - Number of ticks
- * @param color - Color of the grid lines
+ * Returns grid line elements as pure JSX (replacement for old d3 mutation version)
  */
 export const addGridLines = (
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
-  x: d3.ScaleBand<string> | d3.ScalePoint<string>, // More specific type for x scale
-  y: d3.ScaleLinear<number, number>,
+  xScale: any,
+  yScale: any,
   width: number,
   height: number,
   showXGrid: boolean,
   showYGrid: boolean,
   ticks: number,
   color: string,
-): void => {
-  if (showYGrid) {
-    const yGrid = g
-      .append('g')
-      .attr('class', 'grid-line')
-      .call(
-        d3
-          .axisLeft(y)
-          .ticks(ticks)
-          .tickSize(-width)
-          .tickFormat(() => ''),
-      )
-      .attr('stroke', color)
-      .attr('stroke-opacity', 0.2);
-    yGrid.select('.domain').remove();
+): React.ReactElement => {
+  const elements: React.ReactElement[] = [];
+
+  if (showYGrid && yScale?.ticks) {
+    const yTicks = yScale.ticks(ticks);
+    yTicks.forEach((tick: number, i: number) => {
+      const y = yScale(tick);
+      elements.push(
+        <line
+          key={`ygrid-${i}`}
+          x1={0}
+          x2={width}
+          y1={y}
+          y2={y}
+          stroke={color}
+          strokeOpacity={0.2}
+        />
+      );
+    });
   }
 
-  if (showXGrid) {
-    const xGrid = g
-      .append('g')
-      .attr('class', 'grid-line')
-      .attr('transform', `translate(0, ${height})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .tickSize(-height)
-          .tickFormat(() => ''),
-      )
-      .attr('stroke', color)
-      .attr('stroke-opacity', 0.2);
-    xGrid.select('.domain').remove();
+  if (showXGrid && xScale) {
+    const xTicks = (xScale.domain?.() || []).map((d: any, i: number) => {
+      const x = typeof xScale === 'function' ? xScale(d) : (xScale(d) || 0) + (xScale.bandwidth?.() || 0) / 2;
+      return (
+        <line
+          key={`xgrid-${i}`}
+          x1={x}
+          x2={x}
+          y1={0}
+          y2={height}
+          stroke={color}
+          strokeOpacity={0.2}
+        />
+      );
+    });
+    elements.push(...xTicks);
   }
+
+  return <g key="grid-lines" className="grid-line">{elements}</g>;
 };
 
 /**
