@@ -123,6 +123,7 @@ const RadarChart: React.FC<RadarChartProps> = ({
     }
   }
 
+  // New useTooltip integrated (per current HEAD; supports client coords from renderer)
   const { showTooltip, hideTooltip } = useTooltip({
     backgroundColor: tooltipFormat ? 'transparent' : tooltip.backgroundColor,
     textColor: tooltipFormat ? 'transparent' : tooltip.textColor,
@@ -136,7 +137,7 @@ const RadarChart: React.FC<RadarChartProps> = ({
       const content = tooltipFormat
         ? tooltipFormat(hoveredData)
         : `<strong>${hoveredData.seriesName}</strong><br/>${hoveredData.axisLabel}: ${hoveredData.value}`;
-      tooltip.showTooltip(
+      showTooltip(
         content,
         hoveredData.tooltipX,
         hoveredData.tooltipY,
@@ -144,9 +145,17 @@ const RadarChart: React.FC<RadarChartProps> = ({
         tooltip.offsetY,
       );
     } else if (tooltipRef.current) {
-      tooltip.hideTooltip();
+      hideTooltip();
     }
-  }, [hoveredData, tooltip, tooltip.offsetX, tooltip.offsetY, chartRef, tooltipFormat]);
+  }, [
+    hoveredData,
+    showTooltip,
+    hideTooltip,
+    tooltip.offsetX,
+    tooltip.offsetY,
+    chartRef,
+    tooltipFormat,
+  ]);
 
   if (!data || data.length === 0 || !axesLabels || axesLabels.length === 0) {
     return <p>RadarChart: Insufficient data or axes labels provided.</p>;
@@ -225,7 +234,8 @@ const RadarChart: React.FC<RadarChartProps> = ({
       <div
         style={{
           display: 'flex',
-          flexDirection: legend.position === 'top' || legend.position === 'bottom' ? 'row' : 'column',
+          flexDirection:
+            legend.position === 'top' || legend.position === 'bottom' ? 'row' : 'column',
           flexWrap: 'wrap', // Allow wrapping for horizontal legends
           justifyContent: 'center',
           gap: legend.gap,

@@ -4,6 +4,8 @@
  */
 import React from 'react';
 import { HoveredDataInfo, RadarChartProps } from './types';
+import { radialLinePath } from '../math/paths';
+import { linearScale } from '../math/scales';
 export interface RadarChartRendererProps
   extends Pick<
     RadarChartProps,
@@ -115,10 +117,8 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
   const rAxisLabelOffset = axisLabelOffset ?? 10;
   const rHoverTargetRadius = hoverTargetRadius ?? 8;
 
-  const lineGenerator = lineRadial<[number, number]>()
-    .angle((d) => d[0])
-    .radius((d) => d[1])
-    .curve(curveCardinalClosed);
+  // Zero-dep radial path (replaces d3-shape lineRadial + curveCardinalClosed)
+  // points are already [angle, radius] pairs as required by radialLinePath
 
   return (
     <>
@@ -188,7 +188,7 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
           return [angleSlice * axisIndex, radius * valueRatio] as [number, number];
         });
 
-        const pathData = lineGenerator(seriesPoints);
+        const pathData = radialLinePath(seriesPoints, true);
         if (!pathData) return null;
 
         const isHovered = hoveredData?.seriesName === series.name;
@@ -249,7 +249,9 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                   style={{ cursor: 'pointer' }}
                   onMouseEnter={(e) => {
                     if (chartRef.current) {
-                      const [tooltipX, tooltipY] = d3.pointer(e, chartRef.current);
+                      // Use client coords for new React tooltip (replaces d3.pointer)
+                      const tooltipX = e.clientX;
+                      const tooltipY = e.clientY;
                       if (setHoveredData) {
                         setHoveredData({
                           seriesName: series.name,
@@ -296,7 +298,9 @@ export const RadarChartRenderer: React.FC<RadarChartRendererProps> = ({
                   style={{ cursor: 'pointer' }}
                   onMouseEnter={(e) => {
                     if (chartRef.current) {
-                      const [tooltipX, tooltipY] = d3.pointer(e, chartRef.current);
+                      // Use client coords for new React tooltip (replaces d3.pointer)
+                      const tooltipX = e.clientX;
+                      const tooltipY = e.clientY;
                       if (setHoveredData) {
                         setHoveredData({
                           seriesName: series.name,
