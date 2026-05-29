@@ -5,6 +5,8 @@ import ChartLegend from './common/ChartLegend';
 import { ChartLegendItem } from './common/types';
 import { useChartTheme } from '../theme/ChartThemeContext';
 import type { TooltipConfig, LegendConfig } from '../types';
+import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
 
 const FunnelChart: React.FC<FunnelChartProps> = (props) => {
   const theme = useChartTheme();
@@ -20,6 +22,7 @@ const FunnelChart: React.FC<FunnelChartProps> = (props) => {
     className,
     style,
     tooltip,
+    tooltipFormat,
     showLegend = false,
     legend,
     clickableLegend = false,
@@ -53,6 +56,9 @@ const FunnelChart: React.FC<FunnelChartProps> = (props) => {
     ...tooltip,
   };
 
+  // Switch to new useTooltip + forward callbacks (replaces old internal tooltip in renderer)
+  const { tooltipState, showTooltip, hideTooltip } = useTooltip(tooltipConfig);
+
   return (
     <div className={className} style={{ width: '100%', height: '100%', ...style }}>
       <FunnelChartRenderer
@@ -65,8 +71,11 @@ const FunnelChart: React.FC<FunnelChartProps> = (props) => {
         onSliceClick={onSliceClick}
         isDarkMode={isDarkMode}
         tooltip={tooltipConfig}
+        tooltipFormat={tooltipFormat}
         showLegend={showLegend}
         legend={legendConfig}
+        onShowTooltip={showTooltip}
+        onHideTooltip={hideTooltip}
       />
       {showLegend && (
         <ChartLegend
@@ -76,6 +85,7 @@ const FunnelChart: React.FC<FunnelChartProps> = (props) => {
           theme={isDarkMode ? 'dark' : 'light'}
         />
       )}
+      <Tooltip state={tooltipState} config={tooltipConfig} />
     </div>
   );
 };

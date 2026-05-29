@@ -1,14 +1,38 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { FunnelChartProps } from './types';
-import { useTooltip } from '../hooks/useTooltip';
+import { maxOf } from '../math/array';
+import { linearScale } from '../math/scales';
 
-const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
-  data,
+// Zero-dep color darken (replaces d3.color().darker()) - local to this file only
+function darkenHex(color: string | undefined, factor = 0.5): string {
+  if (!color) return '#555555';
+  let hex = color.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  const num = parseInt(hex, 16);
+  if (isNaN(num)) return color;
+  let r = Math.floor(((num >> 16) & 255) * (1 - factor));
+  let g = Math.floor(((num >> 8) & 255) * (1 - factor));
+  let b = Math.floor((num & 255) * (1 - factor));
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+const FunnelChartRenderer: React.FC<
+  FunnelChartProps & {
+    onShowTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+    onHideTooltip?: () => void;
+  }
+> = ({
+  data = [],
   width = 600,
   height = 400,
   margin = { top: 20, right: 20, bottom: 30, left: 40 },
-  showValues,
-  valueFormat,
+  showValues = false,
+  valueFormat = (v: number) => v.toString(),
   onSliceClick,
   tooltip = {
     backgroundColor: '#000000',
@@ -27,199 +51,20 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
   segmentShadowBlur = 5,
   segmentShadowOffsetX = 0,
   segmentShadowOffsetY = 5,
+  onShowTooltip,
+  onHideTooltip,
 }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-  const filterIdRef = useRef<string>(`funnel-shadow-${Math.random().toString(36).substring(7)}`);
+  const filterId = `funnel-shadow-${React.useId()}`;
 
-  const { showTooltip, hideTooltip } = useTooltip({
-    backgroundColor: tooltipFormat ? 'transparent' : tooltip.backgroundColor,
-    textColor: tooltipFormat ? 'transparent' : tooltip.textColor,
-    padding: tooltipFormat ? '0px' : tooltip.padding,
-    borderRadius: tooltip.borderRadius,
-    fontSize: tooltip.fontSize,
-  });
+  const innerWidth = Math.max(0, width - (margin?.left ?? 0) - (margin?.right ?? 0));
+  const innerHeight = Math.max(0, height - (margin?.top ?? 0) - (margin?.bottom ?? 0));
 
-  const adjustedWidth = width;
-  const adjustedHeight = height;
-
-  useEffect(() => {
-    if (!svgRef.current || !data.length) return;
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    const defs = svg.append('defs');
-
-    defs
-      .append('filter')
-      .attr('id', filterIdRef.current)
-      .attr('x', '-50%')
-      .attr('y', '-50%')
-      .attr('width', '200%')
-      .attr('height', '200%')
-      .append('feDropShadow')
-      .attr('dx', segmentShadowOffsetX)
-      .attr('dy', segmentShadowOffsetY)
-      .attr('stdDeviation', segmentShadowBlur)
-      .attr('flood-color', segmentShadowColor);
-
-    data.forEach((d, i) => {
-      if (enableGradients && d.color) {
-        const gradientId = `gradient-${d.label.replace(/[^a-zA-Z0-9-_]/g, '')}-${i}`;
-        const linearGradient = defs.append('linearGradient').attr('id', gradientId);
-
-        if (gradientDirection === 'vertical') {
-          linearGradient.attr('x1', '0%').attr('y1', '0%').attr('x2', '0%').attr('y2', '100%');
-        } else {
-          linearGradient.attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '0%');
-        }
-
-        linearGradient
-          .append('stop')
-          .attr('offset', '0%')
-          .attr('stop-color', d3.color(d.color)?.darker(0.5)?.toString() || d.color);
-        linearGradient.append('stop').attr('offset', '100%').attr('stop-color', d.color);
-      }
-    });
-
-    const innerWidth = adjustedWidth - margin.left - margin.right;
-    const innerHeight = adjustedHeight - margin.top - margin.bottom;
-
-    const maxValue = d3.max(data, (d) => d.value) || 0;
-
-    const xScale = d3.scaleLinear().domain([0, maxValue]).range([0, innerWidth]);
-
-    const segmentHeight = innerHeight / data.length;
-
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    let currentY = 0;
-    data.forEach((d, i) => {
-      const segment = g.append('g').attr('class', 'funnel-segment');
-
-      const topWidth = xScale(d.value);
-      const bottomWidth = i < data.length - 1 ? xScale(data[i + 1].value) : xScale(0);
-
-      const topX = (innerWidth - topWidth) / 2;
-      const bottomX = (innerWidth - bottomWidth) / 2;
-
-      const path = segment
-        .append('path')
-        .attr(
-          'd',
-          `
-          M ${topX} ${currentY}
-          L ${topX + topWidth} ${currentY}
-          L ${bottomX + bottomWidth} ${currentY + segmentHeight}
-          L ${bottomX} ${currentY + segmentHeight}
-          Z
-        `,
-        )
-        .attr(
-          'fill',
-          enableGradients && d.color
-            ? `url(#gradient-${d.label.replace(/[^a-zA-Z0-9-_]/g, '')}-${i})`
-            : d.color || `hsl(${(i * 360) / data.length}, 70%, 50%)`,
-        )
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 1)
-        .style('cursor', onSliceClick ? 'pointer' : 'default')
-        .style('filter', `url(#${filterIdRef.current})`);
-
-      path
-        .on('click', function (_event) {
-          void _event;
-          onSliceClick?.(d);
-        })
-        .on('mouseenter', function (event) {
-          if (chartRef.current) {
-            const [x, y] = d3.pointer(event, chartRef.current);
-
-            const tooltipContent = tooltipFormat
-              ? tooltipFormat(d)
-              : `
-                <div style="
-                  background-color: ${tooltip.backgroundColor};
-                  color: ${tooltip.textColor};
-                  padding: ${tooltip.padding};
-                  border-radius: ${tooltip.borderRadius};
-                  font-size: ${tooltip.fontSize};
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                  text-align: center;
-                ">
-                  <div style="font-weight: bold; color: ${d.color || (isDarkMode ? '#a8dadc' : '#4287f5')};">${d.label}</div>
-                  <div>Value: <span style="font-weight: bold;">${valueFormat?.(d.value) ?? d.value.toString()}</span></div>
-                </div>
-                `;
-
-            tooltip.showTooltip(tooltipContent, x + tooltip.offsetX, y + tooltip.offsetY);
-          }
-        })
-        .on('mouseleave', function () {
-          tooltip.hideTooltip();
-        });
-
-      if (showValues) {
-        segment
-          .append('text')
-          .attr('x', innerWidth / 2) // Centered horizontally
-          .attr('y', currentY + segmentHeight / 2) // Centered vertically within the segment
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'middle')
-          .attr('fill', isDarkMode ? '#e2e8f0' : '#1a202c') // Adjust color for better contrast
-          .attr('font-size', '14px')
-          .attr('pointer-events', 'none') // Prevent text from interfering with mouse events on path
-          .text(`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`);
-      }
-
-      currentY += segmentHeight;
-    });
-
-    g.selectAll('.y-axis-label').remove();
-
-    g.selectAll('.y-axis-label')
-      .data(data)
-      .enter()
-      .append('text')
-      .attr('class', 'y-axis-label')
-      .attr('x', -10)
-      .attr('y', (d, i) => i * segmentHeight + segmentHeight / 2)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .attr('fill', isDarkMode ? '#cbd5e0' : '#4a5568')
-      .attr('font-size', '12px')
-      .text((d) => d.label);
-  }, [
-    data,
-    adjustedWidth,
-    adjustedHeight,
-    margin,
-    showValues,
-    valueFormat,
-    onSliceClick,
-    tooltip,
-    tooltip.offsetX,
-    tooltip.offsetY,
-    tooltipFormat,
-    isDarkMode,
-    enableGradients,
-    gradientDirection,
-    segmentShadowColor,
-    segmentShadowBlur,
-    segmentShadowOffsetX,
-    segmentShadowOffsetY,
-    tooltip.backgroundColor,
-    tooltip.textColor,
-    tooltip.padding,
-    tooltip.borderRadius,
-    tooltip.fontSize,
-  ]);
+  const maxValue = maxOf(data, (d) => d.value) || 0;
+  const xScale = linearScale([0, maxValue], [0, innerWidth]);
+  const segmentHeight = data.length > 0 ? innerHeight / data.length : 0;
 
   return (
     <div
-      ref={chartRef}
       style={{
         width: '100%',
         height: '100%',
@@ -231,8 +76,129 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
         position: 'relative',
       }}
     >
-      <svg ref={svgRef} width={width} height={height} style={{ display: 'block' }} />
-      <div ref={tooltipRef} style={{ position: 'absolute', pointerEvents: 'none', zIndex: 9999 }} />
+      <svg width={width} height={height} style={{ display: 'block' }}>
+        <defs>
+          {/* Pure JSX drop-shadow filter (replaces d3 filter creation) */}
+          <filter
+            id={filterId}
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+          >
+            <feDropShadow
+              dx={segmentShadowOffsetX}
+              dy={segmentShadowOffsetY}
+              stdDeviation={segmentShadowBlur}
+              floodColor={segmentShadowColor}
+            />
+          </filter>
+
+          {/* Pure JSX gradients per segment (replaces d3 defs append in useEffect) */}
+          {enableGradients &&
+            data.map((d, i) => {
+              const safeLabel = (d.label || `seg${i}`).replace(/[^a-zA-Z0-9-_]/g, '');
+              const gid = `gradient-${safeLabel}-${i}`;
+              const darker = darkenHex(d.color, 0.5);
+              const isVertical = gradientDirection === 'vertical';
+              return (
+                <linearGradient
+                  key={gid}
+                  id={gid}
+                  x1="0%"
+                  y1="0%"
+                  x2={isVertical ? '0%' : '100%'}
+                  y2={isVertical ? '100%' : '0%'}
+                >
+                  <stop offset="0%" stopColor={darker} />
+                  <stop offset="100%" stopColor={d.color || '#888888'} />
+                </linearGradient>
+              );
+            })}
+        </defs>
+
+        <g transform={`translate(${margin?.left ?? 0},${margin?.top ?? 0})`}>
+          {data.map((d, i) => {
+            const topW = xScale(d.value);
+            const botW = i < data.length - 1 ? xScale(data[i + 1].value) : 0;
+            const topX = (innerWidth - topW) / 2;
+            const botX = (innerWidth - botW) / 2;
+            const y = i * segmentHeight;
+
+            const safeLabel = (d.label || `seg${i}`).replace(/[^a-zA-Z0-9-_]/g, '');
+            const gid = `gradient-${safeLabel}-${i}`;
+            const fill =
+              enableGradients && d.color
+                ? `url(#${gid})`
+                : d.color || `hsl(${(i * 360) / Math.max(1, data.length)}, 70%, 50%)`;
+
+            // Trapezoid: compute 4 corner points, render as <polygon> (replaces path d= M L..)
+            const points = [
+              `${topX},${y}`,
+              `${topX + topW},${y}`,
+              `${botX + botW},${y + segmentHeight}`,
+              `${botX},${y + segmentHeight}`,
+            ].join(' ');
+
+            const content = tooltipFormat
+              ? tooltipFormat(d)
+              : `<div style="background-color: ${tooltip.backgroundColor}; color: ${tooltip.textColor}; padding: ${tooltip.padding}; border-radius: ${tooltip.borderRadius}; font-size: ${tooltip.fontSize}; box-shadow: 0 4px 12px rgba(0,0,0,0.15); text-align: center;">
+                  <div style="font-weight: bold; color: ${d.color || (isDarkMode ? '#a8dadc' : '#4287f5')};">${d.label}</div>
+                  <div>Value: <span style="font-weight: bold;">${valueFormat(d.value)}</span></div>
+                </div>`;
+
+            return (
+              <g key={i} className="funnel-segment">
+                <polygon
+                  points={points}
+                  fill={fill}
+                  stroke="#fff"
+                  strokeWidth={1}
+                  style={{
+                    cursor: onSliceClick ? 'pointer' : 'default',
+                    filter: `url(#${filterId})`,
+                  }}
+                  onClick={() => onSliceClick?.(d)}
+                  onMouseEnter={(e) => {
+                    onShowTooltip?.(content, e);
+                  }}
+                  onMouseLeave={() => {
+                    onHideTooltip?.();
+                  }}
+                />
+                {showValues && (
+                  <text
+                    x={innerWidth / 2}
+                    y={y + segmentHeight / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={isDarkMode ? '#e2e8f0' : '#1a202c'}
+                    fontSize="14px"
+                    pointerEvents="none"
+                  >
+                    {`${d.label}: ${valueFormat(d.value)}`}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Left labels (replaces the d3 .y-axis-label enter append) */}
+          {data.map((d, i) => (
+            <text
+              key={`ylabel-${i}`}
+              x={-10}
+              y={i * segmentHeight + segmentHeight / 2}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill={isDarkMode ? '#cbd5e0' : '#4a5568'}
+              fontSize="12px"
+            >
+              {d.label}
+            </text>
+          ))}
+        </g>
+      </svg>
     </div>
   );
 };
