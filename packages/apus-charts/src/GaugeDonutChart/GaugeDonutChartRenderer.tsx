@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { GaugeDonutChartProps, GaugeDonutData } from './types';
 import type { LegendConfig } from '../types/legend';
 import type { TooltipConfig } from '../types/tooltip';
 import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
+import { pieLayout, arcPath } from '../math';
 
 export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
   legend?: LegendConfig;
@@ -40,7 +42,18 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
   centerLabel,
   centerValue,
   onSliceClick,
-  colors = d3.schemeCategory10,
+  colors = [
+    '#1f77b4',
+    '#ff7f0e',
+    '#2ca02c',
+    '#d62728',
+    '#9467bd',
+    '#8c564b',
+    '#e377c2',
+    '#7f7f7f',
+    '#bcbd22',
+    '#17becf',
+  ],
   showTooltip = true,
   tooltipConfig = {
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -49,35 +62,15 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
     borderRadius: '6px',
     fontSize: '14px',
   },
+  tooltip,
   tooltipFormat,
   enableGlow = false,
   glowColor,
   glowBlur = 5,
+  innerRadius = 0.6,
+  outerRadius = 0.8,
 }) => {
   const [activeSlices, setActiveSlices] = useState<Set<string>>(new Set());
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltip.backgroundColor,
-    textColor: tooltip.textColor,
-    padding: tooltip.padding,
-    borderRadius: tooltip.borderRadius,
-    fontSize: tooltip.fontSize,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    zIndex: 1000,
-  });
-
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [
-    tooltip,
-    tooltip.backgroundColor,
-    tooltip.textColor,
-    tooltip.padding,
-    tooltip.borderRadius,
-    tooltip.fontSize,
-  ]);
 
   const handleSliceClick = useCallback(
     (clickedData: GaugeDonutData) => {
@@ -95,242 +88,75 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
     [activeSlices, onSliceClick],
   );
 
-  useEffect(() => {
-    if (!svgRef.current) return;
+  // Compute gauge angles (no d3.pie)
+  let startAngle = 0;
+  let endAngle = Math.PI * 2;
+  switch (variant) {
+    case 'full':
+      startAngle = 0;
+      endAngle = Math.PI * 2;
+      break;
+    case 'half-left':
+      startAngle = Math.PI;
+      endAngle = Math.PI * 2;
+      break;
+    case 'half-right':
+      startAngle = 0;
+      endAngle = Math.PI;
+      break;
+    case 'half-bottom':
+      startAngle = Math.PI / 2;
+      endAngle = Math.PI * 1.5;
+      break;
+    case 'half-top':
+      startAngle = Math.PI * 1.5;
+      endAngle = Math.PI * 2.5;
+      break;
+    case 'quarter-top-left':
+      startAngle = Math.PI * 1.5;
+      endAngle = Math.PI * 2;
+      break;
+    case 'quarter-top-right':
+      startAngle = 0;
+      endAngle = Math.PI / 2;
+      break;
+    case 'quarter-bottom-left':
+      startAngle = Math.PI;
+      endAngle = Math.PI * 1.5;
+      break;
+    case 'quarter-bottom-right':
+      startAngle = Math.PI / 2;
+      endAngle = Math.PI;
+      break;
+    default:
+      startAngle = 0;
+      endAngle = Math.PI * 2;
+  }
 
-    const svgElement = svgRef.current;
+  const filteredData =
+    activeSlices.size === 0 ? data : data.filter((d) => activeSlices.has(d.label));
 
-    const svg = d3.select(svgElement);
-    const cx = width / 2;
-    const cy = height / 2;
-    const radius = Math.min(width, height) / 2;
+  // Use pieLayout + arcPath (no d3, no useEffect mutation)
+  const slices = pieLayout(filteredData, (d: GaugeDonutData) => d.value, startAngle, endAngle);
+  const total = filteredData.reduce((sum, d) => sum + d.value, 0);
 
-    let startAngle: number;
-    let endAngle: number;
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(width, height) / 2;
+  const innerR = radius * (innerRadius ?? 0.6);
+  const outerR = radius * (outerRadius ?? 0.8);
 
-    switch (variant) {
-      case 'full':
-        startAngle = 0;
-        endAngle = Math.PI * 2;
-        break;
-      case 'half-left':
-        startAngle = Math.PI;
-        endAngle = Math.PI * 2;
-        break;
-      case 'half-right':
-        startAngle = 0;
-        endAngle = Math.PI;
-        break;
-      case 'half-bottom':
-        startAngle = Math.PI / 2;
-        endAngle = Math.PI * 1.5;
-        break;
-      case 'half-top':
-        startAngle = Math.PI * 1.5;
-        endAngle = Math.PI * 2.5;
-        break;
-      case 'quarter-top-left':
-        startAngle = Math.PI * 1.5;
-        endAngle = Math.PI * 2;
-        break;
-      case 'quarter-top-right':
-        startAngle = 0;
-        endAngle = Math.PI / 2;
-        break;
-      case 'quarter-bottom-left':
-        startAngle = Math.PI;
-        endAngle = Math.PI * 1.5;
-        break;
-      case 'quarter-bottom-right':
-        startAngle = Math.PI / 2;
-        endAngle = Math.PI;
-        break;
-      default:
-        startAngle = 0;
-        endAngle = Math.PI * 2;
-    }
-
-    const filteredData =
-      activeSlices.size === 0 ? data : data.filter((d) => activeSlices.has(d.label));
-
-    const pie = d3
-      .pie<GaugeDonutData>()
-      .value((d) => d.value)
-      .startAngle(startAngle)
-      .endAngle(endAngle)
-      .sort(null);
-
-    const arcData = pie(filteredData);
-
-    const total = filteredData.reduce((sum, d) => sum + d.value, 0);
-
-    const arcGen = d3
-      .arc<d3.PieArcDatum<GaugeDonutData>>()
-      .innerRadius(radius * 0.6)
-      .outerRadius(radius * 0.8)
-      .cornerRadius(10)
-      .padAngle(0.02);
-
-    svg.select('g').remove();
-    svg.selectAll('defs').remove();
-
-    const defs = svg.append('defs');
-
-    if (enableGlow) {
-      defs
-        .append('filter')
-        .attr('id', 'gauge-glow')
-        .attr('x', '-50%')
-        .attr('y', '-50%')
-        .attr('width', '200%')
-        .attr('height', '200%')
-        .call((filter) => {
-          filter
-            .append('feGaussianBlur')
-            .attr('in', 'SourceGraphic')
-            .attr('stdDeviation', glowBlur)
-            .attr('result', 'coloredBlur');
-          filter
-            .append('feFlood')
-            .attr('flood-colors', glowColor || 'currentColor')
-            .attr('result', 'glowColor');
-          filter
-            .append('feComposite')
-            .attr('in', 'glowColor')
-            .attr('in2', 'coloredBlur')
-            .attr('operator', 'in')
-            .attr('result', 'coloredBlur');
-          filter.append('feMerge').call((merge) => {
-            merge.append('feMergeNode').attr('in', 'coloredBlur');
-            merge.append('feMergeNode').attr('in', 'SourceGraphic');
-          });
-        });
-    }
-
-    filteredData.forEach((d, i) => {
-      if (d.gradient) {
-        const gradientId = `gradient-${i}`;
-        const gradient = defs
-          .append('linearGradient')
-          .attr('id', gradientId)
-          .attr('x1', '0%')
-          .attr('y1', '0%')
-          .attr('x2', '100%')
-          .attr('y2', '100%');
-
-        d.gradient.forEach((stop) => {
-          gradient
-            .append('stop')
-            .attr('offset', stop.offset)
-            .attr('stop-colors', stop.colors)
-            .attr('stop-opacity', stop.opacity ?? 1);
-        });
-      }
-    });
-
-    const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
-
-    const paths = g
-      .selectAll<SVGPathElement, d3.PieArcDatum<GaugeDonutData>>('path')
-      .data(arcData, (d) => d.data.label);
-
-    const enteredPaths = paths
-      .enter()
-      .append('path')
-      .attr('fill', (d, i) => {
-        if (d.data.gradient) {
-          return `url(#gradient-${i})`;
-        }
-        return d.data.colors || colors[i % colors.length];
-      })
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2)
-      .style('transition', 'opacity 0.2s, d 0.2s')
-      .attr('filter', enableGlow ? 'url(#gauge-glow)' : null);
-
-    enteredPaths
-      .on('mouseover', (event, d) => {
-        if (!showTooltip) return;
-        const [x, y] = d3.pointer(event, svgElement);
-        const percent = total > 0 ? ((d.data.value / total) * 100).toFixed(1) : '0.0';
-        const content = tooltipFormat
-          ? tooltipFormat(d.data, total, percent)
-          : `<strong>${d.data.label}</strong><br/>Value: ${d.data.value}<br/>${percent}%`;
-        tooltip.showTooltip(content, x, y, 10, -15);
-      })
-      .on('mouseout', () => {
-        if (!showTooltip) return;
-        tooltip.hideTooltip();
-      })
-      .on('click', (event, d) => handleSliceClick(d.data))
-      .style('cursor', onSliceClick ? 'pointer' : 'default');
-
-    paths
-      .on('mouseover', (event, d) => {
-        if (!showTooltip) return;
-        const [x, y] = d3.pointer(event, svgElement);
-        const percent = total > 0 ? ((d.data.value / total) * 100).toFixed(1) : '0.0';
-        const content = tooltipFormat
-          ? tooltipFormat(d.data, total, percent)
-          : `<strong>${d.data.label}</strong><br/>Value: ${d.data.value}<br/>${percent}%`;
-        tooltip.showTooltip(content, x, y, 10, -15);
-      })
-      .on('mouseout', () => {
-        if (!showTooltip) return;
-        tooltip.hideTooltip();
-      })
-      .on('click', (event, d) => handleSliceClick(d.data))
-      .style('cursor', onSliceClick ? 'pointer' : 'default');
-
-    paths.merge(enteredPaths).attr('d', arcGen);
-
-    paths.exit().remove();
-
-    if (centerLabel || centerValue !== undefined) {
-      const textGroup = g
-        .append('g')
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .style('pointer-events', 'none');
-
-      textGroup
-        .append('text')
-        .attr('class', `text-slate-700 dark:text-slate-300`)
-        .style('font-size', '32px')
-        .style('font-weight', 'bold')
-        .text(centerValue !== undefined ? centerValue : total.toFixed(0));
-
-      if (centerLabel) {
-        textGroup
-          .append('text')
-          .attr('class', `text-slate-500 dark:text-slate-400`)
-          .attr('y', 30)
-          .style('font-size', '16px')
-          .text(centerLabel);
-      }
-    }
-
-    return () => {
-      svg.select('g').remove();
-      svg.selectAll('defs').remove();
-    };
-  }, [
-    width,
-    height,
-    data,
-    variant,
-    centerLabel,
-    centerValue,
-    onSliceClick,
-    colors,
-    showTooltip,
-    tooltip,
-    tooltipFormat,
-    activeSlices,
-    enableGlow,
-    glowColor,
-    glowBlur,
-  ]);
+  // New React tooltip (client coords, no ref/d3.pointer)
+  const mergedTooltip: TooltipConfig = {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    textColor: '#fff',
+    padding: '8px 12px',
+    borderRadius: '6px',
+    fontSize: '14px',
+    ...tooltipConfig,
+    ...tooltip,
+  };
+  const { tooltipState, showTooltip: showT, hideTooltip } = useTooltip(mergedTooltip);
 
   const containerStyle: React.CSSProperties = {
     display: 'flex',
@@ -362,11 +188,15 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
     overflowY: 'auto',
   };
 
+  // Color accessor (supports both `color` (per types) and legacy `colors`)
+  const getColor = (item: GaugeDonutData, i: number) =>
+    (item as any).color || (item as any).colors || colors[i % colors.length];
+
   return (
     <div className={`chart-container ${className}`} style={containerStyle}>
       {legend.position === 'top' && (
         <div style={legendStyle}>
-          {data.map((item) => {
+          {data.map((item, idx) => {
             const isActive = activeSlices.has(item.label);
             return (
               <div
@@ -386,7 +216,10 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: getColor(
+                      item,
+                      data.indexOf(item) >= 0 ? data.indexOf(item) : idx,
+                    ),
                     borderRadius: '2px',
                   }}
                 />
@@ -399,13 +232,103 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
       )}
 
       <div style={chartStyle}>
-        <svg ref={svgRef} width={width} height={height} style={{ display: 'block' }}></svg>
-        <div ref={tooltipRef} className="gauge-donut-tooltip"></div>
+        <svg width={width} height={height} style={{ display: 'block' }}>
+          <g transform={`translate(${cx},${cy})`}>
+            <defs>
+              {enableGlow && (
+                <filter id="gauge-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation={glowBlur} result="coloredBlur" />
+                  <feFlood floodColor={glowColor || 'currentColor'} result="glowColor" />
+                  <feComposite
+                    in="glowColor"
+                    in2="coloredBlur"
+                    operator="in"
+                    result="coloredBlur"
+                  />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              )}
+              {filteredData.map((d, i) =>
+                d.gradient ? (
+                  <linearGradient
+                    key={`grad-${i}`}
+                    id={`gradient-${i}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    {d.gradient.map((stop, j) => (
+                      <stop
+                        key={j}
+                        offset={stop.offset}
+                        stopColor={(stop as any).color || (stop as any).colors}
+                        stopOpacity={stop.opacity ?? 1}
+                      />
+                    ))}
+                  </linearGradient>
+                ) : null,
+              )}
+            </defs>
+
+            {/* Gauge slices using pieLayout + arcPath (pure computed JSX, no D3 mutation) */}
+            {slices.map((slice, i) => {
+              const d = slice.data;
+              const percent = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
+              const content = tooltipFormat
+                ? tooltipFormat(d, total, percent)
+                : `<strong>${d.label}</strong><br/>Value: ${d.value}<br/>${percent}%`;
+              const fill = d.gradient
+                ? `url(#gradient-${i})`
+                : (d as any).color || (d as any).colors || colors[i % colors.length];
+              return (
+                <path
+                  key={d.label}
+                  d={arcPath(innerR, outerR, slice.startAngle, slice.endAngle)}
+                  fill={fill}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  style={{ transition: 'opacity 0.2s' }}
+                  filter={enableGlow ? 'url(#gauge-glow)' : undefined}
+                  cursor={onSliceClick || showTooltip ? 'pointer' : 'default'}
+                  pointerEvents="all"
+                  onMouseOver={showTooltip ? (e) => showT(content, e) : undefined}
+                  onMouseOut={showTooltip ? () => hideTooltip() : undefined}
+                  onClick={onSliceClick ? () => handleSliceClick(d) : undefined}
+                />
+              );
+            })}
+
+            {/* Center text */}
+            {(centerLabel || centerValue !== undefined) && (
+              <g textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: 'none' }}>
+                <text
+                  className="text-slate-700 dark:text-slate-300"
+                  style={{ fontSize: '32px', fontWeight: 'bold' }}
+                >
+                  {centerValue !== undefined ? centerValue : total.toFixed(0)}
+                </text>
+                {centerLabel && (
+                  <text
+                    className="text-slate-500 dark:text-slate-400"
+                    y={30}
+                    style={{ fontSize: '16px' }}
+                  >
+                    {centerLabel}
+                  </text>
+                )}
+              </g>
+            )}
+          </g>
+        </svg>
       </div>
 
       {legend.position === 'bottom' && (
         <div style={legendStyle}>
-          {data.map((item) => {
+          {data.map((item, idx) => {
             const isActive = activeSlices.has(item.label);
             return (
               <div
@@ -425,7 +348,10 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: getColor(
+                      item,
+                      data.indexOf(item) >= 0 ? data.indexOf(item) : idx,
+                    ),
                     borderRadius: '2px',
                   }}
                 />
@@ -439,7 +365,7 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
 
       {(legend.position === 'left' || legend.position === 'right') && (
         <div style={{ ...legendStyle, width: '200px' }}>
-          {data.map((item) => {
+          {data.map((item, idx) => {
             const isActive = activeSlices.has(item.label);
             return (
               <div
@@ -459,7 +385,10 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
                   style={{
                     width: '12px',
                     height: '12px',
-                    backgroundColor: item.colors || colors[data.indexOf(item) % colors.length],
+                    backgroundColor: getColor(
+                      item,
+                      data.indexOf(item) >= 0 ? data.indexOf(item) : idx,
+                    ),
                     borderRadius: '2px',
                   }}
                 />
@@ -470,6 +399,8 @@ export const GaugeDonutChartRenderer: React.FC<GaugeDonutChartRendererProps> = (
           })}
         </div>
       )}
+
+      <Tooltip state={tooltipState} config={mergedTooltip} />
     </div>
   );
 };

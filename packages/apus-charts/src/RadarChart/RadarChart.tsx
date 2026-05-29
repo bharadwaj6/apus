@@ -123,17 +123,13 @@ const RadarChart: React.FC<RadarChartProps> = ({
     }
   }
 
-  const tooltip = useTooltip(tooltipRef, {
+  const { showTooltip, hideTooltip } = useTooltip({
     backgroundColor: tooltipFormat ? 'transparent' : tooltip.backgroundColor,
     textColor: tooltipFormat ? 'transparent' : tooltip.textColor,
     padding: tooltipFormat ? '0px' : tooltip.padding,
     borderRadius: tooltip.borderRadius,
     fontSize: tooltip.fontSize,
   });
-
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
 
   useEffect(() => {
     if (hoveredData && tooltipRef.current && chartRef.current) {

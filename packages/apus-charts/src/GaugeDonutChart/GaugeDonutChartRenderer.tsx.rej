@@ -1,0 +1,14 @@
+diff a/packages/apus-charts/src/GaugeDonutChart/GaugeDonutChartRenderer.tsx b/packages/apus-charts/src/GaugeDonutChart/GaugeDonutChartRenderer.tsx	(rejected hunks)
+@@ -1,9 +1,10 @@
+-import React, { useState, useRef, useEffect, useCallback } from 'react';
+-import * as d3 from 'd3';
++import React, { useState, useCallback } from 'react';
+ import { GaugeDonutChartProps, GaugeDonutData } from './types';
+ import type { LegendConfig } from '../types/legend';
+ import type { TooltipConfig } from '../types/tooltip';
+ import { useTooltip } from '../hooks/useTooltip';
++import { Tooltip } from '../components/Tooltip';
++import { pieLayout, arcPath } from '../math';
+ 
+ export interface GaugeDonutChartRendererProps extends GaugeDonutChartProps {
+   legend?: LegendConfig;

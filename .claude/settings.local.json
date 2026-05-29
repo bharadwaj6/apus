@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/bharadwajsrigiriraju/Projects/others/apus log --oneline -10)"
+    ]
+  }
+}
