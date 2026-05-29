@@ -101,22 +101,15 @@ export type ScatterChartProps = BaseChartProps & {
   errorBars?: Partial<ErrorBarConfig>; // Default error bars config
   visibleSeries?: Record<string, boolean>; // Track which series are visible
   onSeriesToggle?: (seriesId: string, visible: boolean) => void;
-}
+};
 
 export interface RendererProps extends Omit<ScatterChartProps, 'style' | 'className'> {
   selectedCategory: string | null;
   selectedSeries?: string | null;
   visibleSeries?: Record<string, boolean>; // Track which series are visible
-  onPointHover: (
-    event: MouseEvent,
-    dataPoint: ScatterDataPoint,
-    color: string,
-    mouseX: number,
-    mouseY: number,
-    seriesId?: string,
-    seriesName?: string,
-  ) => void;
-  onPointLeave: () => void;
+  // New tooltip callbacks (pure JSX pattern, no d3)
+  onShowTooltip?: (content: string, event: React.MouseEvent | MouseEvent) => void;
+  onHideTooltip?: () => void;
   onLegendItemClick?: (category: string | null, seriesId?: string) => void;
   onSeriesToggle?: (seriesId: string, visible: boolean) => void;
   onPointClick?: (event: MouseEvent, dataPoint: ScatterDataPoint, seriesId?: string) => void;

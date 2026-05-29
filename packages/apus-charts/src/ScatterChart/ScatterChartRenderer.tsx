@@ -1,18 +1,23 @@
-import React, { useRef, useEffect, FC } from 'react';
-import { RendererProps, Margin, ScatterDataPoint } from './types';
+import React, { useState, FC } from 'react';
+import { RendererProps, ScatterDataPoint } from './types';
+import {
+  extentOf,
+  linearScale,
+  timeScale,
+  sqrtScale,
+  logScale,
+  ordinalScale,
+  CATEGORY_10,
+  SET_2,
+  TABLEAU_10,
+} from '../math';
+import { linearRegression } from '../math/regression';
 
-const DEFAULT_COLORS = [
-  '#1f77b4',
-  '#ff7f0e',
-  '#2ca02c',
-  '#d62728',
-  '#9467bd',
-  '#8c564b',
-  '#e377c2',
-  '#7f7f7f',
-  '#bcbd22',
-  '#17becf',
-];
+const DEFAULT_COLORS = CATEGORY_10;
+
+// Helper to get numeric x value (timestamp for dates)
+const getXNumeric = (d: ScatterDataPoint): number =>
+  d.x instanceof Date ? d.x.getTime() : (d.x as number);
 
 export const ScatterChartRenderer: FC<RendererProps> = ({
   data,
@@ -32,793 +37,679 @@ export const ScatterChartRenderer: FC<RendererProps> = ({
   selectedCategory,
   selectedSeries,
   visibleSeries = {},
-  onPointHover,
-  onPointLeave,
+  onShowTooltip,
+  onHideTooltip,
   onLegendItemClick,
   onSeriesToggle,
   onPointClick,
+  tooltipFormat,
 }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
+  // Local state for hover highlight (replaces d3.select mutation for stroke/radius)
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Process data from either single dataset or multiple series
-    const allData: Array<ScatterDataPoint & { seriesId?: string; seriesName?: string }> = [];
-    const seriesList: Array<{ id: string; name: string; color: string }> = [];
+  // Process data from either single dataset or multiple series (pure computation)
+  const allData: Array<ScatterDataPoint & { seriesId?: string; seriesName?: string }> = [];
+  const seriesList: Array<{ id: string; name: string; color?: string }> = [];
 
-    if (series && series.length > 0) {
-      // Multiple series mode
-      series.forEach((s) => {
-        if (s.visible !== false && (!visibleSeries[s.id] || visibleSeries[s.id])) {
-          s.data.forEach((d) => {
-            allData.push({
-              ...d,
-              seriesId: s.id,
-              seriesName: s.name || s.id,
-            });
+  if (series && series.length > 0) {
+    // Multiple series mode
+    series.forEach((s) => {
+      const isVisible = s.visible !== false && (!visibleSeries[s.id] || visibleSeries[s.id]);
+      if (isVisible) {
+        s.data.forEach((d) => {
+          allData.push({
+            ...d,
+            seriesId: s.id,
+            seriesName: s.name || s.id,
           });
-          seriesList.push({
-            id: s.id,
-            name: s.name || s.id,
-            colors: typeof s.colors === 'string' ? s.colors : '',
-          });
-        }
-      });
-    } else if (data && data.length > 0) {
-      // Single dataset mode
-      allData.push(...data);
-    }
-
-    if (allData.length === 0 || width === 0 || height === 0) return;
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    const margin: Margin = { top: 40, right: 40, bottom: 50, left: 60 };
-
-    // Get unique categories across all series
-    const categories = [...new Set(allData.map((d) => d.category))];
-
-    // Create separate colors scales for categories and series
-    let categoryColorScale: d3.ScaleOrdinal<string, string>;
-    let seriesColorScale: d3.ScaleOrdinal<string, string>;
-
-    // Handle colors as either array or object for categories
-    if (Array.isArray(colors)) {
-      categoryColorScale = d3.scaleOrdinal<string>().domain(categories).range(colors);
-    } else if (typeof colors === 'object' && colors !== null) {
-      categoryColorScale = d3
-        .scaleOrdinal<string>()
-        .domain(Object.keys(colors))
-        .range(Object.values(colors as Record<string, string>));
-    } else {
-      categoryColorScale = d3.scaleOrdinal<string>().domain(categories).range(DEFAULT_COLORS);
-    }
-
-    // Create series colors scale
-    seriesColorScale = d3
-      .scaleOrdinal<string>()
-      .domain(seriesList.map((s) => s.id))
-      .range(DEFAULT_COLORS);
-
-    // Helper function to get point colors based on series or category
-    const getPointColor = (
-      d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
-    ): string => {
-      // If we have series and this point has a seriesId, use series colors
-      if (series && series.length > 0 && d.seriesId) {
-        const seriesConfig = series.find((s) => s.id === d.seriesId);
-        if (seriesConfig && typeof seriesConfig.colors === 'string') {
-          return seriesConfig.colors;
-        }
-        return seriesColorScale(d.seriesId);
+        });
+        seriesList.push({
+          id: s.id,
+          name: s.name || s.id,
+          color: typeof s.colors === 'string' ? s.colors : undefined,
+        });
       }
-      // Otherwise use category colors
-      return d.category ? categoryColorScale(d.category) : DEFAULT_COLORS[0];
+    });
+  } else if (data && data.length > 0) {
+    // Single dataset mode
+    allData.push(...data);
+  }
+
+  if (allData.length === 0 || width === 0 || height === 0) {
+    return <svg width={width} height={height} />;
+  }
+
+  // Margins (pure calc, legend may expand)
+  const margin = { top: 40, right: 40, bottom: 50, left: 60 };
+
+  // Get unique categories across all series
+  const categories = [...new Set(allData.map((d) => d.category))];
+
+  // Color handling using math ordinal + constants (replaces d3.scaleOrdinal + schemes)
+  let colorValues: string[] = Array.isArray(colors) ? colors : CATEGORY_10;
+  if (typeof colors === 'object' && colors !== null && !Array.isArray(colors)) {
+    colorValues = Object.values(colors as Record<string, string>);
+  }
+  const categoryColorScale = ordinalScale(
+    categories,
+    colorValues.length ? colorValues : CATEGORY_10,
+  );
+
+  // series color scale fallback
+  const seriesColorScale = ordinalScale(
+    seriesList.map((s) => s.id),
+    CATEGORY_10,
+  );
+
+  // Helper to get point color (pure)
+  const getPointColor = (
+    d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
+  ): string => {
+    if (series && series.length > 0 && d.seriesId) {
+      const seriesConfig = series.find((s) => s.id === d.seriesId);
+      if (seriesConfig && typeof seriesConfig.colors === 'string') {
+        return seriesConfig.colors;
+      }
+      if (seriesConfig && Array.isArray(seriesConfig.colors) && seriesConfig.colors.length) {
+        return seriesConfig.colors[0];
+      }
+      return seriesColorScale(d.seriesId);
+    }
+    return d.category ? categoryColorScale(d.category) : CATEGORY_10[0];
+  };
+
+  // Adjust margins for legend (pure)
+  if (showLegend) {
+    const legendPadding = 10;
+    const legendItemHeight = 20;
+    const legendWidth = 120;
+    if (legend.position === 'right') margin.right += legendWidth;
+    else if (legend.position === 'left') margin.left += legendWidth;
+    else if (legend.position === 'top')
+      margin.top += Math.max(1, categories.length) * legendItemHeight + legendPadding;
+    else if (legend.position === 'bottom')
+      margin.bottom += Math.max(1, categories.length) * legendItemHeight + legendPadding;
+  }
+
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+
+  if (chartWidth <= 0 || chartHeight <= 0) {
+    return <svg width={width} height={height} />;
+  }
+
+  // X/Y domains using extentOf (replaces d3.extent)
+  const xIsDate = allData.length > 0 && allData[0]?.x instanceof Date;
+  const xNumValues = allData.map((d) => getXNumeric(d));
+  const xDomain: [number, number] = xNumValues.length
+    ? extentOf(
+        xNumValues.map((v) => ({ v })),
+        (dd) => dd.v,
+      )
+    : [0, 1];
+  const yDomain: [number, number] = allData.length ? extentOf(allData, (d) => d.y) : [0, 1];
+
+  // Scales using math equivalents (linear / time / no d3.scale*)
+  const xScale = xIsDate
+    ? timeScale([new Date(xDomain[0]), new Date(xDomain[1])], [0, chartWidth])
+    : linearScale(xDomain, [0, chartWidth]);
+  const yScale = linearScale([yDomain[0], yDomain[1]], [chartHeight, 0]);
+
+  // Bubble size scale (pure math sqrt/log/linear)
+  const bubbleEnabled = !!bubbleChart.enabled;
+  const valueField = bubbleChart.valueField || 'size';
+  const minSize = bubbleChart.minSize || pointSize;
+  const maxSize = bubbleChart.maxSize || pointSize * 3;
+  const sizeScaleType = bubbleChart.sizeScale || 'linear';
+
+  let pointSizeScaleFn: ((val: number) => number) | null = null;
+  if (bubbleEnabled) {
+    const sizeVals: number[] = [];
+    const sourceData = data && data.length ? data : allData;
+    sourceData.forEach((d) => {
+      const sv = (d as any)[valueField];
+      if (typeof sv === 'number') sizeVals.push(sv);
+    });
+    const sizeExt: [number, number] = sizeVals.length
+      ? extentOf(
+          sizeVals.map((v) => ({ v })),
+          (dd) => dd.v,
+        )
+      : [1, 10];
+
+    if (sizeScaleType === 'sqrt') {
+      const sc = sqrtScale(sizeExt, [minSize, maxSize]);
+      pointSizeScaleFn = (v: number) => sc(v);
+    } else if (sizeScaleType === 'log') {
+      const logDom: [number, number] = [Math.max(0.1, sizeExt[0]), sizeExt[1]];
+      const sc = logScale(logDom, [minSize, maxSize]);
+      pointSizeScaleFn = (v: number) => sc(v);
+    } else {
+      const sc = linearScale(sizeExt, [minSize, maxSize]);
+      pointSizeScaleFn = (v: number) => sc(v);
+    }
+  }
+
+  // Radius calculator (pure fn, replaces duplicated d3 attr fns)
+  const getRadius = (d: any, hoverMultiplier = 1): number => {
+    let base = pointSize;
+    if (d.seriesId) {
+      const sItem = series?.find((s) => s.id === d.seriesId);
+      if (sItem?.pointSize) base = sItem.pointSize;
+      if (sItem?.bubbleChart?.enabled && pointSizeScaleFn) {
+        const vf = sItem.bubbleChart.valueField || valueField;
+        const sv = (d as any)[vf];
+        base = typeof sv === 'number' ? pointSizeScaleFn(sv) : base;
+      }
+    } else if (bubbleEnabled && pointSizeScaleFn) {
+      const sv = (d as any)[valueField];
+      base = typeof sv === 'number' ? pointSizeScaleFn(sv) : base;
+    }
+    return base * hoverMultiplier;
+  };
+
+  // Trend line using linearRegression -> <line> (replaces d3-regression + d3.line path)
+  let trendX1 = 0,
+    trendY1 = 0,
+    trendX2 = 0,
+    trendY2 = 0,
+    hasTrend = false;
+  const tColor = trendLine?.color || trendLine?.colors || 'steelblue';
+  const tWidth = trendLine?.strokeWidth || 2;
+  const tDash = trendLine?.strokeDasharray || '6,2';
+  if (trendLine?.show && allData.length >= 2) {
+    const regPoints: [number, number][] = allData.map((d) => [getXNumeric(d), d.y]);
+    const xExtReg: [number, number] = xDomain;
+    const reg = linearRegression(regPoints, xExtReg);
+    if (reg.points && reg.points.length === 2) {
+      const [p0, p1] = reg.points;
+      trendX1 = xScale(p0[0]);
+      trendY1 = yScale(p0[1]);
+      trendX2 = xScale(p1[0]);
+      trendY2 = yScale(p1[1]);
+      hasTrend = true;
+    }
+  }
+
+  // Grid ticks (computed, no d3.axis generators)
+  const yTickCount = 5;
+  const yTicks = yScale.ticks ? yScale.ticks(yTickCount) : [yDomain[0], yDomain[1]];
+  const xTickCount = 5;
+  const xTicksRaw = xScale.ticks ? xScale.ticks(xTickCount) : xDomain;
+  const xTicks = xTicksRaw;
+
+  // Build error bar elements (pure)
+  const errorBarsEnabled = !!errorBars?.enabled;
+  const errorBarColor = errorBars?.color || errorBars?.colors || '#333';
+  const errorBarStrokeWidth = errorBars?.strokeWidth || 1;
+  const errorBarCapWidth = errorBars?.capWidth || 6;
+  const errorBarOpacity = errorBars?.opacity || 0.6;
+  const showXErr = errorBars?.xAxis !== false;
+  const showYErr = errorBars?.yAxis !== false;
+  const showErrCaps = errorBars?.showCaps !== false;
+
+  const errorBarElements: React.ReactNode[] = [];
+  if (errorBarsEnabled) {
+    allData.forEach((d, idx) => {
+      if (selectedCategory && d.category !== selectedCategory) return;
+      if (selectedSeries && d.seriesId !== selectedSeries) return;
+
+      let eColor = errorBarColor;
+      let eWidth = errorBarStrokeWidth;
+      let eOp = errorBarOpacity;
+      if (d.seriesId) {
+        const sItem = series?.find((s) => s.id === d.seriesId);
+        if (sItem?.errorBars) {
+          eColor = sItem.errorBars.color || sItem.errorBars.colors || eColor;
+          eWidth = sItem.errorBars.strokeWidth || eWidth;
+          eOp = sItem.errorBars.opacity || eOp;
+        }
+      }
+      const ptColor = getPointColor(d);
+
+      // X error
+      if (showXErr && d.xError !== undefined) {
+        let neg = 0,
+          pos = 0;
+        if (Array.isArray(d.xError)) {
+          neg = d.xError[0] || 0;
+          pos = d.xError[1] || d.xError[0] || 0;
+        } else {
+          neg = pos = d.xError;
+        }
+        const x1 = xScale(getXNumeric(d) - neg);
+        const x2 = xScale(getXNumeric(d) + pos);
+        const y = yScale(d.y);
+        errorBarElements.push(
+          <line
+            key={`ex-${idx}`}
+            x1={x1}
+            x2={x2}
+            y1={y}
+            y2={y}
+            stroke={ptColor}
+            strokeWidth={eWidth}
+            opacity={eOp}
+          />,
+        );
+        if (showErrCaps) {
+          const cap = errorBarCapWidth / 2;
+          errorBarElements.push(
+            <line
+              key={`exl-${idx}`}
+              x1={x1}
+              x2={x1}
+              y1={y - cap}
+              y2={y + cap}
+              stroke={ptColor}
+              strokeWidth={eWidth}
+              opacity={eOp}
+            />,
+            <line
+              key={`exr-${idx}`}
+              x1={x2}
+              x2={x2}
+              y1={y - cap}
+              y2={y + cap}
+              stroke={ptColor}
+              strokeWidth={eWidth}
+              opacity={eOp}
+            />,
+          );
+        }
+      }
+      // Y error
+      if (showYErr && d.yError !== undefined) {
+        let neg = 0,
+          pos = 0;
+        if (Array.isArray(d.yError)) {
+          neg = d.yError[0] || 0;
+          pos = d.yError[1] || d.yError[0] || 0;
+        } else {
+          neg = pos = d.yError;
+        }
+        const x = xScale(getXNumeric(d));
+        const y1 = yScale(d.y - neg);
+        const y2 = yScale(d.y + pos);
+        errorBarElements.push(
+          <line
+            key={`ey-${idx}`}
+            x1={x}
+            x2={x}
+            y1={y1}
+            y2={y2}
+            stroke={ptColor}
+            strokeWidth={eWidth}
+            opacity={eOp}
+          />,
+        );
+        if (showErrCaps) {
+          const cap = errorBarCapWidth / 2;
+          errorBarElements.push(
+            <line
+              key={`eyt-${idx}`}
+              x1={x - cap}
+              x2={x + cap}
+              y1={y1}
+              y2={y1}
+              stroke={ptColor}
+              strokeWidth={eWidth}
+              opacity={eOp}
+            />,
+            <line
+              key={`eyb-${idx}`}
+              x1={x - cap}
+              x2={x + cap}
+              y1={y2}
+              y2={y2}
+              stroke={ptColor}
+              strokeWidth={eWidth}
+              opacity={eOp}
+            />,
+          );
+        }
+      }
+    });
+  }
+
+  // Legend position calc (pure)
+  const legendItemHeight = 20;
+  let legendX = 0,
+    legendY = 0;
+  if (showLegend) {
+    if (legend.position === 'right') {
+      legendX = chartWidth + margin.left + 20;
+      legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
+    } else if (legend.position === 'left') {
+      legendX = 10;
+      legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
+    } else if (legend.position === 'top') {
+      legendX = margin.left;
+      legendY = 10;
+    } else {
+      legendX = margin.left;
+      legendY = chartHeight + margin.top + 20;
+    }
+  }
+
+  // Axis label elements
+  const axisLabelEls: React.ReactNode[] = [];
+  if (xAxis.label) {
+    axisLabelEls.push(
+      <text
+        key="xlab"
+        x={chartWidth / 2}
+        y={chartHeight + (margin.bottom - 10)}
+        textAnchor="middle"
+        fill={xAxis.labelColor || '#333'}
+        fontSize={xAxis.labelFontSize || 14}
+      >
+        {xAxis.label}
+      </text>,
+    );
+  }
+  if (yAxis.label) {
+    axisLabelEls.push(
+      <text
+        key="ylab"
+        transform={`rotate(-90)`}
+        x={-chartHeight / 2}
+        y={-margin.left + 20}
+        textAnchor="middle"
+        fill={yAxis.labelColor || '#333'}
+        fontSize={yAxis.labelFontSize || 14}
+      >
+        {yAxis.label}
+      </text>,
+    );
+  }
+
+  // Custom axis rendering (supports tickFormat, dates) - replaces d3.axis + post styling
+  const renderXAxis = () => {
+    const tickVals = xTicks;
+    return (
+      <g transform={`translate(0, ${chartHeight})`}>
+        <line x1={0} x2={chartWidth} stroke={xAxis.stroke || '#333'} className="domain" />
+        {tickVals.map((t, i) => {
+          const numT = Number(t);
+          const x = xScale(numT);
+          let label = String(t);
+          if (xAxis.tickFormat) {
+            const orig = xIsDate ? new Date(numT) : numT;
+            label = xAxis.tickFormat(orig as any);
+          } else if (xIsDate) {
+            label = new Date(numT).toLocaleDateString();
+          }
+          return (
+            <g key={`xt-${i}`} transform={`translate(${x}, 0)`}>
+              <line y2={6} stroke={xAxis.tickColor || '#333'} />
+              <text
+                y={20}
+                textAnchor="middle"
+                fill={xAxis.tickColor || '#333'}
+                fontSize={xAxis.fontSize || 12}
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
+  const renderYAxis = () => {
+    const tickVals = yTicks;
+    return (
+      <g>
+        <line y1={0} y2={chartHeight} stroke={yAxis.stroke || '#333'} className="domain" />
+        {tickVals.map((t, i) => {
+          const y = yScale(Number(t));
+          let label = String(t);
+          if (yAxis.tickFormat) {
+            label = yAxis.tickFormat(t as any);
+          }
+          return (
+            <g key={`yt-${i}`} transform={`translate(0, ${y})`}>
+              <line
+                x1={-6}
+                x2={chartWidth}
+                stroke={yAxis.tickColor || '#333'}
+                strokeOpacity={0.3}
+              />
+              <text
+                x={-10}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fill={yAxis.tickColor || '#333'}
+                fontSize={yAxis.fontSize || 12}
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
+  // Grid lines (pure <line>)
+  const gridEls: React.ReactNode[] = [];
+  if (grid.horizontal) {
+    yTicks.forEach((t, i) => {
+      const y = yScale(Number(t));
+      gridEls.push(
+        <line
+          key={`gh-${i}`}
+          x1={0}
+          x2={chartWidth}
+          y1={y}
+          y2={y}
+          stroke={grid.stroke || '#e0e0e0'}
+          strokeWidth={grid.strokeWidth || 1}
+          strokeDasharray={grid.strokeDasharray || '3 3'}
+        />,
+      );
+    });
+  }
+  if (grid.vertical) {
+    xTicks.forEach((t, i) => {
+      const x = xScale(Number(t));
+      gridEls.push(
+        <line
+          key={`gv-${i}`}
+          x1={x}
+          x2={x}
+          y1={0}
+          y2={chartHeight}
+          stroke={grid.stroke || '#e0e0e0'}
+          strokeWidth={grid.strokeWidth || 1}
+          strokeDasharray={grid.strokeDasharray || '3 3'}
+        />,
+      );
+    });
+  }
+
+  // Data point + hover area elements (pure JSX, new tooltip callbacks)
+  const dotEls: React.ReactNode[] = [];
+  const hoverEls: React.ReactNode[] = [];
+
+  allData.forEach((d, i) => {
+    const key = `${i}-${d.category}-${getXNumeric(d)}-${d.y}`;
+    const isSelected =
+      (!selectedCategory || d.category === selectedCategory) &&
+      (!selectedSeries || d.seriesId === selectedSeries);
+    const isHovered = hoveredKey === key;
+    const fill = getPointColor(d);
+    const op = isSelected ? 0.85 : 0.2;
+    const r = getRadius(d, isHovered ? 1.5 : 1);
+    const cx = xScale(getXNumeric(d));
+    const cy = yScale(d.y);
+
+    const buildTooltipContent = (): string => {
+      const hoveredForFormat: any = {
+        ...d,
+        eventX: 0,
+        eventY: 0,
+        seriesId: d.seriesId,
+        seriesName: d.seriesName,
+      };
+      if (typeof tooltipFormat === 'function') {
+        return tooltipFormat(hoveredForFormat);
+      }
+      const xVal = d.x instanceof Date ? d.x.toLocaleDateString() : d.x;
+      return `
+        <div style="display:flex;align-items:center;margin-bottom:5px;">
+          <span style="width:10px;height:10px;background:${fill};border-radius:50%;margin-right:8px;"></span>
+          <strong>${d.category}</strong>
+        </div>
+        ${d.seriesName ? `<div><strong>Series:</strong> ${d.seriesName}</div>` : ''}
+        <div>X: ${xVal}</div>
+        <div>Y: ${d.y}</div>
+        ${d.size ? `<div>Size: ${d.size}</div>` : ''}
+      `;
     };
 
-    if (showLegend) {
-      const legendPadding = 10;
-      const legendItemHeight = 20;
-      const legendWidth = 120; // Fixed width for legend
-
-      if (legend.position === 'right') margin.right += legendWidth;
-      else if (legend.position === 'left') margin.left += legendWidth;
-      else if (legend.position === 'top')
-        margin.top += categories.length * legendItemHeight + legendPadding;
-      else if (legend.position === 'bottom')
-        margin.bottom += categories.length * legendItemHeight + legendPadding;
-    }
-
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
-
-    if (chartWidth <= 0 || chartHeight <= 0) return;
-
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    const xIsDate = allData.length > 0 && allData[0]?.x instanceof Date;
-
-    // Safely calculate domain extents with proper type handling
-    const xDomain =
-      allData.length > 0
-        ? (d3.extent(allData, (d) => d.x) as [number | Date, number | Date])
-        : ([0, 1] as [number | Date, number | Date]);
-    const yDomain =
-      allData.length > 0
-        ? (d3.extent(allData, (d) => d.y) as [number, number])
-        : ([0, 1] as [number, number]);
-
-    const xScale = (
-      xIsDate
-        ? d3.scaleTime().domain(xDomain as [Date, Date])
-        : d3.scaleLinear().domain(xDomain as [number, number])
-    )
-      .range([0, chartWidth])
-      .nice();
-    const yScale = d3.scaleLinear().domain(yDomain).range([chartHeight, 0]).nice();
-
-    // Grid lines
-    if (grid.horizontal) {
-      const yAxisGrid = d3
-        .axisLeft(yScale)
-        .tickSize(-chartWidth)
-        .tickFormat(() => '');
-      g.append('g')
-        .attr('class', 'grid y-grid')
-        .call(yAxisGrid)
-        .selectAll('line')
-        .attr('stroke', grid.stroke || '#e0e0e0')
-        .attr('stroke-width', grid.strokeWidth || 1)
-        .attr('stroke-dasharray', grid.strokeDasharray || '3 3');
-    }
-
-    if (grid.vertical) {
-      const xAxisGrid = d3
-        .axisBottom(xScale)
-        .tickSize(-chartHeight)
-        .tickFormat(() => '');
-      g.append('g')
-        .attr('class', 'grid x-grid')
-        .call(xAxisGrid)
-        .selectAll('line')
-        .attr('stroke', grid.stroke || '#e0e0e0')
-        .attr('stroke-width', grid.strokeWidth || 1)
-        .attr('stroke-dasharray', grid.strokeDasharray || '3 3');
-    }
-
-    // Axes
-    const xAxisGenerator = d3.axisBottom(xScale);
-    if (xAxis.tickFormat) {
-      xAxisGenerator.tickFormat(xAxis.tickFormat);
-    }
-    const xAxisGroup = g
-      .append('g')
-      .attr('transform', `translate(0,${chartHeight})`)
-      .call(xAxisGenerator);
-
-    const yAxisGenerator = d3.axisLeft(yScale);
-    if (yAxis.tickFormat) {
-      yAxisGenerator.tickFormat(yAxis.tickFormat);
-    }
-    const yAxisGroup = g.append('g').call(yAxisGenerator);
-
-    // Axis labels
-    if (xAxis.label) {
-      g.append('text')
-        .attr('x', chartWidth / 2)
-        .attr('y', chartHeight + margin.bottom - 10)
-        .attr('text-anchor', 'middle')
-        .style('fill', xAxis.labelColor || '#333')
-        .style('font-size', xAxis.labelFontSize || '14px')
-        .text(xAxis.label);
-    }
-
-    if (yAxis.label) {
-      g.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('x', -chartHeight / 2)
-        .attr('y', -margin.left + 20)
-        .attr('text-anchor', 'middle')
-        .style('fill', yAxis.labelColor || '#333')
-        .style('font-size', yAxis.labelFontSize || '14px')
-        .text(yAxis.label);
-    }
-
-    // Style axes
-    xAxisGroup.selectAll('path').style('stroke', xAxis.stroke || '#333');
-    xAxisGroup.selectAll('line').style('stroke', xAxis.tickColor || '#333');
-    xAxisGroup
-      .selectAll('text')
-      .style('fill', xAxis.tickColor || '#333')
-      .style('font-size', xAxis.fontSize || '12px');
-    yAxisGroup.selectAll('path').style('stroke', yAxis.stroke || '#333');
-    yAxisGroup.selectAll('line').style('stroke', yAxis.tickColor || '#333');
-    yAxisGroup
-      .selectAll('text')
-      .style('fill', yAxis.tickColor || '#333')
-      .style('font-size', yAxis.fontSize || '12px');
-
-    // Configure bubble chart settings
-    const bubbleEnabled = bubbleChart.enabled || false;
-    const valueField = bubbleChart.valueField || 'size';
-    const minSize = bubbleChart.minSize || pointSize;
-    const maxSize = bubbleChart.maxSize || pointSize * 3;
-    const sizeScale = bubbleChart.sizeScale || 'linear';
-
-    // Create size scale if bubble chart is enabled
-    let pointSizeScale: d3.ScaleLinear<number, number> | null = null;
-
-    if (bubbleEnabled) {
-      // Get min and max size values from data safely
-      const sizeExtent =
-        data && data.length > 0
-          ? (d3
-              .extent(data, (d) => {
-                const sizeValue = d[valueField as keyof ScatterDataPoint];
-                return typeof sizeValue === 'number' ? sizeValue : null;
-              })
-              .filter((v): v is number => v !== null) as [number, number])
-          : ([1, 10] as [number, number]); // Default if no data
-
-      // Create appropriate scale based on configuration
-      if (sizeScale === 'sqrt') {
-        pointSizeScale = d3.scaleSqrt().domain(sizeExtent).range([minSize, maxSize]);
-      } else if (sizeScale === 'log') {
-        // Ensure domain doesn't include zero or negative values for log scale
-        const logDomain = [Math.max(0.1, sizeExtent[0]), sizeExtent[1]];
-        pointSizeScale = d3.scaleLog().domain(logDomain).range([minSize, maxSize]);
-      } else {
-        // Default to linear scale
-        pointSizeScale = d3.scaleLinear().domain(sizeExtent).range([minSize, maxSize]);
+    const onEnter = (e: React.MouseEvent<SVGCircleElement>) => {
+      setHoveredKey(key);
+      if (onShowTooltip) {
+        const content = buildTooltipContent();
+        onShowTooltip(content, e);
       }
-    }
-
-    // Data points
-    g.selectAll('.dot')
-      .data(allData)
-      .enter()
-      .append('circle')
-      .attr('class', 'dot')
-      .attr('cx', (d) => xScale(d.x as number))
-      .attr('cy', (d) => yScale(d.y))
-      .attr('r', (d) => {
-        // Check for series-specific point size
-        if (d.seriesId) {
-          const seriesItem = series?.find((s) => s.id === d.seriesId);
-          if (seriesItem?.pointSize) {
-            return seriesItem.pointSize;
-          }
-
-          // Check for series-specific bubble chart
-          if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-            const seriesBubbleConfig = seriesItem.bubbleChart;
-            const seriesValueField = seriesBubbleConfig.valueField || valueField;
-            const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-            return typeof sizeValue === 'number'
-              ? pointSizeScale(sizeValue)
-              : seriesItem.pointSize || pointSize;
-          }
-        }
-
-        // Default bubble chart behavior
-        if (bubbleEnabled && pointSizeScale) {
-          const sizeValue = d[valueField as keyof ScatterDataPoint];
-          return typeof sizeValue === 'number' ? pointSizeScale(sizeValue) : pointSize;
-        }
-        return pointSize;
-      })
-      .style('fill', (d) => getPointColor(d))
-      .style('opacity', (d) => {
-        // Filter by both category and series
-        const categoryMatch = !selectedCategory || d.category === selectedCategory;
-        const seriesMatch = !selectedSeries || d.seriesId === selectedSeries;
-        return categoryMatch && seriesMatch ? 0.8 : 0.2;
-      })
-      .style('cursor', 'pointer')
-      .on('click', function (event: MouseEvent, d: ScatterDataPoint & { seriesId?: string }) {
-        if (onPointClick) {
-          onPointClick(event, d, d.seriesId);
-        }
-      })
-      .on(
-        'mouseover',
-        function (
-          event: MouseEvent,
-          d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
-        ) {
-          // Highlight the point on hover
-          d3.select(this)
-            .attr('r', () => {
-              // Check for series-specific point size
-              if (d.seriesId) {
-                const seriesItem = series?.find((s) => s.id === d.seriesId);
-                if (seriesItem?.pointSize) {
-                  return seriesItem.pointSize * 1.5;
-                }
-
-                // Check for series-specific bubble chart
-                if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-                  const seriesBubbleConfig = seriesItem.bubbleChart;
-                  const seriesValueField = seriesBubbleConfig.valueField || valueField;
-                  const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-                  return typeof sizeValue === 'number'
-                    ? pointSizeScale(sizeValue) * 1.5
-                    : (seriesItem.pointSize || pointSize) * 1.5;
-                }
-              }
-
-              // Default bubble chart behavior
-              if (bubbleEnabled && pointSizeScale) {
-                const sizeValue = d[valueField as keyof ScatterDataPoint];
-                return typeof sizeValue === 'number'
-                  ? pointSizeScale(sizeValue) * 1.5
-                  : pointSize * 1.5;
-              }
-              return pointSize * 1.5;
-            })
-            .style('stroke', '#fff')
-            .style('stroke-width', 2);
-
-          if (onPointHover) {
-            const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const colors = getPointColor(d);
-            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
-          }
-        },
-      )
-      .on(
-        'mousemove',
-        function (
-          event: MouseEvent,
-          d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
-        ) {
-          // Update tooltip position on mouse move
-          if (onPointHover) {
-            const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const colors = getPointColor(d);
-            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
-          }
-        },
-      )
-      .on('mouseout', function (event: MouseEvent, d: ScatterDataPoint & { seriesId?: string }) {
-        // Reset point appearance
-        d3.select(this)
-          .attr('r', () => {
-            // Check for series-specific point size
-            if (d.seriesId) {
-              const seriesItem = series?.find((s) => s.id === d.seriesId);
-              if (seriesItem?.pointSize) {
-                return seriesItem.pointSize;
-              }
-
-              // Check for series-specific bubble chart
-              if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-                const seriesBubbleConfig = seriesItem.bubbleChart;
-                const seriesValueField = seriesBubbleConfig.valueField || valueField;
-                const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-                return typeof sizeValue === 'number'
-                  ? pointSizeScale(sizeValue)
-                  : seriesItem.pointSize || pointSize;
-              }
-            }
-
-            // Default bubble chart behavior
-            if (bubbleEnabled && pointSizeScale) {
-              const sizeValue = d[valueField as keyof ScatterDataPoint];
-              return typeof sizeValue === 'number' ? pointSizeScale(sizeValue) : pointSize;
-            }
-            return pointSize;
-          })
-          .style('stroke', 'none');
-        if (onPointLeave) {
-          onPointLeave();
-        }
-      });
-
-    // Draw error bars if enabled
-    const errorBarsEnabled = errorBars?.enabled || false;
-    const errorBarColor = errorBars?.colors || '#333';
-    const errorBarStrokeWidth = errorBars?.strokeWidth || 1;
-    const errorBarCapWidth = errorBars?.capWidth || 6;
-    const errorBarOpacity = errorBars?.opacity || 0.6;
-    const showXErrorBars = errorBars?.xAxis !== false; // Default to true if not specified
-    const showYErrorBars = errorBars?.yAxis !== false; // Default to true if not specified
-    const showErrorBarCaps = errorBars?.showCaps !== false; // Default to true if not specified
-
-    if (errorBarsEnabled) {
-      // Create a group for error bars
-      const errorBarsGroup = g.append('g').attr('class', 'error-bars');
-
-      // Draw error bars for each point in allData
-      allData.forEach((d) => {
-        // Skip points from filtered categories
-        if (selectedCategory && d.category !== selectedCategory) return;
-        // Skip points from filtered series
-        if (selectedSeries && d.seriesId !== selectedSeries) return;
-
-        // Get series-specific error bar settings if available
-        let pointErrorBarColor = errorBarColor;
-        let pointErrorBarStrokeWidth = errorBarStrokeWidth;
-        let pointErrorBarOpacity = errorBarOpacity;
-
-        if (d.seriesId) {
-          const seriesItem = series?.find((s) => s.id === d.seriesId);
-          if (seriesItem?.errorBars) {
-            pointErrorBarColor = seriesItem.errorBars.colors || pointErrorBarColor;
-            pointErrorBarStrokeWidth = seriesItem.errorBars.strokeWidth || pointErrorBarStrokeWidth;
-            pointErrorBarOpacity = seriesItem.errorBars.opacity || pointErrorBarOpacity;
-          }
-        }
-
-        // X-axis error bars
-        if (showXErrorBars && d.xError !== undefined) {
-          let xErrorNeg: number, xErrorPos: number;
-
-          if (Array.isArray(d.xError)) {
-            // Asymmetric error
-            if (d.xError.length >= 2) {
-              xErrorNeg = d.xError[0];
-              xErrorPos = d.xError[1];
-            } else if (d.xError.length === 1) {
-              xErrorNeg = xErrorPos = d.xError[0];
-            } else {
-              xErrorNeg = xErrorPos = 0; // Empty array case
-            }
-          } else {
-            // Symmetric error
-            xErrorNeg = xErrorPos = d.xError;
-          }
-
-          // Draw horizontal error bar
-          errorBarsGroup
-            .append('line')
-            .attr('class', 'error-bar-x')
-            .attr('x1', xScale((d.x as number) - xErrorNeg))
-            .attr('x2', xScale((d.x as number) + xErrorPos))
-            .attr('y1', yScale(d.y))
-            .attr('y2', yScale(d.y))
-            .attr('stroke', getPointColor(d))
-            .attr('stroke-width', pointErrorBarStrokeWidth)
-            .attr('opacity', pointErrorBarOpacity);
-
-          // Draw caps if enabled
-          if (showErrorBarCaps) {
-            // Left cap
-            errorBarsGroup
-              .append('line')
-              .attr('class', 'error-bar-x-cap-left')
-              .attr('x1', xScale((d.x as number) - xErrorNeg))
-              .attr('x2', xScale((d.x as number) - xErrorNeg))
-              .attr('y1', yScale(d.y) - errorBarCapWidth / 2)
-              .attr('y2', yScale(d.y) + errorBarCapWidth / 2)
-              .attr('stroke', getPointColor(d))
-              .attr('stroke-width', pointErrorBarStrokeWidth)
-              .attr('opacity', pointErrorBarOpacity);
-
-            // Right cap
-            errorBarsGroup
-              .append('line')
-              .attr('class', 'error-bar-x-cap-right')
-              .attr('x1', xScale((d.x as number) + xErrorPos))
-              .attr('x2', xScale((d.x as number) + xErrorPos))
-              .attr('y1', yScale(d.y) - errorBarCapWidth / 2)
-              .attr('y2', yScale(d.y) + errorBarCapWidth / 2)
-              .attr('stroke', getPointColor(d))
-              .attr('stroke-width', pointErrorBarStrokeWidth)
-              .attr('opacity', pointErrorBarOpacity);
-          }
-        }
-
-        // Y-axis error bars
-        if (showYErrorBars && d.yError !== undefined) {
-          let yErrorNeg: number, yErrorPos: number;
-
-          if (Array.isArray(d.yError)) {
-            // Asymmetric error
-            if (d.yError.length >= 2) {
-              yErrorNeg = d.yError[0];
-              yErrorPos = d.yError[1];
-            } else if (d.yError.length === 1) {
-              yErrorNeg = yErrorPos = d.yError[0];
-            } else {
-              yErrorNeg = yErrorPos = 0; // Empty array case
-            }
-          } else {
-            // Symmetric error
-            yErrorNeg = yErrorPos = d.yError;
-          }
-
-          // Draw vertical error bar
-          errorBarsGroup
-            .append('line')
-            .attr('class', 'error-bar-y')
-            .attr('x1', xScale(d.x as number))
-            .attr('x2', xScale(d.x as number))
-            .attr('y1', yScale(d.y - yErrorNeg))
-            .attr('y2', yScale(d.y + yErrorPos))
-            .attr('stroke', getPointColor(d))
-            .attr('stroke-width', pointErrorBarStrokeWidth)
-            .attr('opacity', pointErrorBarOpacity);
-
-          // Draw caps if enabled
-          if (showErrorBarCaps) {
-            // Top cap
-            errorBarsGroup
-              .append('line')
-              .attr('class', 'error-bar-y-cap-top')
-              .attr('x1', xScale(d.x as number) - errorBarCapWidth / 2)
-              .attr('x2', xScale(d.x as number) + errorBarCapWidth / 2)
-              .attr('y1', yScale(d.y - yErrorNeg))
-              .attr('y2', yScale(d.y - yErrorNeg))
-              .attr('stroke', getPointColor(d))
-              .attr('stroke-width', pointErrorBarStrokeWidth)
-              .attr('opacity', pointErrorBarOpacity);
-
-            // Bottom cap
-            errorBarsGroup
-              .append('line')
-              .attr('class', 'error-bar-y-cap-bottom')
-              .attr('x1', xScale(d.x as number) - errorBarCapWidth / 2)
-              .attr('x2', xScale(d.x as number) + errorBarCapWidth / 2)
-              .attr('y1', yScale(d.y + yErrorPos))
-              .attr('y2', yScale(d.y + yErrorPos))
-              .attr('stroke', getPointColor(d))
-              .attr('stroke-width', pointErrorBarStrokeWidth)
-              .attr('opacity', pointErrorBarOpacity);
-          }
-        }
-      });
-    }
-
-    // Add larger transparent circles for easier hovering
-    g.selectAll('.hover-area')
-      .data(allData)
-      .enter()
-      .append('circle')
-      .attr('class', 'hover-area')
-      .attr('cx', (d) => xScale(d.x as number))
-      .attr('cy', (d) => yScale(d.y))
-      .attr('r', (d) => {
-        // Check for series-specific point size
-        if (d.seriesId) {
-          const seriesItem = series?.find((s) => s.id === d.seriesId);
-          if (seriesItem?.pointSize) {
-            return seriesItem.pointSize * 3;
-          }
-
-          // Check for series-specific bubble chart
-          if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-            const seriesBubbleConfig = seriesItem.bubbleChart;
-            const seriesValueField = seriesBubbleConfig.valueField || valueField;
-            const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-            return typeof sizeValue === 'number'
-              ? pointSizeScale(sizeValue) * 2
-              : (seriesItem.pointSize || pointSize) * 3;
-          }
-        }
-
-        // Default bubble chart behavior
-        if (bubbleEnabled && pointSizeScale) {
-          const sizeValue = d[valueField as keyof ScatterDataPoint];
-          return typeof sizeValue === 'number' ? pointSizeScale(sizeValue) * 2 : pointSize * 3;
-        }
-        return pointSize * 3; // Larger area for easier hovering
-      })
-      .style('fill', 'transparent')
-      .style('pointer-events', 'all')
-      .on('click', function (event: MouseEvent, d: ScatterDataPoint & { seriesId?: string }) {
-        if (onPointClick) {
-          onPointClick(event, d, d.seriesId);
-        }
-      })
-      .on(
-        'mouseover',
-        function (
-          event: MouseEvent,
-          d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
-        ) {
-          // Find and highlight the corresponding dot
-          svg
-            .selectAll('.dot')
-            .filter((p: any) => p === d)
-            .attr('r', () => {
-              // Check for series-specific point size
-              if (d.seriesId) {
-                const seriesItem = series?.find((s) => s.id === d.seriesId);
-                if (seriesItem?.pointSize) {
-                  return seriesItem.pointSize * 1.5;
-                }
-
-                // Check for series-specific bubble chart
-                if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-                  const seriesBubbleConfig = seriesItem.bubbleChart;
-                  const seriesValueField = seriesBubbleConfig.valueField || valueField;
-                  const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-                  return typeof sizeValue === 'number'
-                    ? pointSizeScale(sizeValue) * 1.5
-                    : (seriesItem.pointSize || pointSize) * 1.5;
-                }
-              }
-
-              // Default bubble chart behavior
-              if (bubbleEnabled && pointSizeScale) {
-                const sizeValue = d[valueField as keyof ScatterDataPoint];
-                return typeof sizeValue === 'number'
-                  ? pointSizeScale(sizeValue) * 1.5
-                  : pointSize * 1.5;
-              }
-              return pointSize * 1.5;
-            })
-            .style('stroke', '#fff')
-            .style('stroke-width', 2);
-
-          if (onPointHover) {
-            const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const colors = getPointColor(d);
-            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
-          }
-        },
-      )
-      .on(
-        'mousemove',
-        function (
-          event: MouseEvent,
-          d: ScatterDataPoint & { seriesId?: string; seriesName?: string },
-        ) {
-          if (onPointHover) {
-            const [mouseX, mouseY] = d3.pointer(event, svg.node());
-            const colors = getPointColor(d);
-            onPointHover(event, d, colors, mouseX, mouseY, d.seriesId, d.seriesName);
-          }
-        },
-      )
-      .on('mouseout', function (event: MouseEvent, d: ScatterDataPoint & { seriesId?: string }) {
-        // Reset the corresponding dot
-        svg
-          .selectAll('.dot')
-          .filter((p: any) => p === d)
-          .attr('r', () => {
-            // Check for series-specific point size
-            if (d.seriesId) {
-              const seriesItem = series?.find((s) => s.id === d.seriesId);
-              if (seriesItem?.pointSize) {
-                return seriesItem.pointSize;
-              }
-
-              // Check for series-specific bubble chart
-              if (seriesItem?.bubbleChart?.enabled && pointSizeScale) {
-                const seriesBubbleConfig = seriesItem.bubbleChart;
-                const seriesValueField = seriesBubbleConfig.valueField || valueField;
-                const sizeValue = d[seriesValueField as keyof ScatterDataPoint];
-                return typeof sizeValue === 'number'
-                  ? pointSizeScale(sizeValue)
-                  : seriesItem.pointSize || pointSize;
-              }
-            }
-
-            // Default bubble chart behavior
-            if (bubbleEnabled && pointSizeScale) {
-              const sizeValue = d[valueField as keyof ScatterDataPoint];
-              return typeof sizeValue === 'number' ? pointSizeScale(sizeValue) : pointSize;
-            }
-            return pointSize;
-          })
-          .style('stroke', 'none');
-
-        if (onPointLeave) {
-          onPointLeave();
-        }
-      });
-
-    // Trend Line
-    if (trendLine?.show) {
-      const regressionGenerator = d3Regression
-        .regressionLinear()
-        .x((d: any) => d.x as number)
-        .y((d: any) => d.y);
-
-      const regressionData = data ? regressionGenerator(data) : [];
-
-      const line = d3
-        .line()
-        .x((d) => xScale(d[0]))
-        .y((d) => yScale(d[1]));
-
-      g.append('path')
-        .datum(regressionData)
-        .attr('class', 'trend-line')
-        .attr('d', line)
-        .style('stroke', trendLine.colors || 'steelblue')
-        .style('stroke-width', trendLine.strokeWidth || 2)
-        .style('stroke-dasharray', trendLine.strokeDasharray || '6, 2')
-        .style('fill', 'none');
-    }
-
-    // Legend
-    if (showLegend) {
-      const legendItemHeight = 20;
-      let legendX = 0,
-        legendY = 0;
-
-      if (legend.position === 'right') {
-        legendX = chartWidth + margin.left + 20;
-        legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
-      } else if (legend.position === 'left') {
-        legendX = 10;
-        legendY = margin.top + (chartHeight - categories.length * legendItemHeight) / 2;
-      } else if (legend.position === 'top') {
-        legendX = margin.left;
-        legendY = 10;
-      } else {
-        // bottom
-        legendX = margin.left;
-        legendY = chartHeight + margin.top + 20;
+    };
+    const onLeave = () => {
+      setHoveredKey(null);
+      onHideTooltip?.();
+    };
+    const onMove = (e: React.MouseEvent<SVGCircleElement>) => {
+      if (onShowTooltip) {
+        const content = buildTooltipContent();
+        onShowTooltip(content, e);
       }
+    };
+    const onClickHandler = (e: React.MouseEvent<SVGCircleElement>) => {
+      if (onPointClick) {
+        onPointClick(e as any, d, d.seriesId);
+      }
+    };
 
-      const legendGroup = svg
-        .append('g')
-        .attr('class', 'legend')
-        .attr('transform', `translate(${legendX}, ${legendY})`);
+    dotEls.push(
+      <circle
+        key={`dot-${key}`}
+        className="dot"
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill={fill}
+        opacity={op}
+        stroke={isHovered ? '#fff' : 'none'}
+        strokeWidth={isHovered ? 2 : 0}
+        style={{ cursor: 'pointer' }}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onMouseMove={onMove}
+        onClick={onClickHandler}
+      />,
+    );
 
-      const legendItems = legendGroup
-        .selectAll('.legend-item')
-        .data(categories)
-        .enter()
-        .append('g')
-        .attr('class', 'legend-item')
-        .attr('transform', (d, i) => `translate(0, ${i * legendItemHeight})`)
-        .style('cursor', legend.clickable ? 'pointer' : 'default')
-        .on('click', (event, d: string) => {
-          if (legend.clickable && onLegendItemClick) {
-            const newSelectedCategory = selectedCategory === d ? null : d;
-            onLegendItemClick(newSelectedCategory);
-          }
-        });
+    // Hover area (larger, keeps test selectors + easier interaction)
+    const hr = getRadius(d, 3);
+    hoverEls.push(
+      <circle
+        key={`ha-${key}`}
+        className="hover-area"
+        cx={cx}
+        cy={cy}
+        r={hr}
+        fill="transparent"
+        style={{ pointerEvents: 'all' }}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onMouseMove={onMove}
+        onClick={onClickHandler}
+      />,
+    );
+  });
 
-      legendItems
-        .append('rect')
-        .attr('width', 12)
-        .attr('height', 12)
-        .attr('rx', 6)
-        .attr('ry', 6)
-        .style('fill', (d) => (d ? categoryColorScale(d) : DEFAULT_COLORS[0]))
-        .style('opacity', (d) => (!selectedCategory || d === selectedCategory ? 1 : 0.5));
+  // Legend items (pure JSX, clickable)
+  const legendItemsEls: React.ReactNode[] = [];
+  if (showLegend) {
+    categories.forEach((cat, idx) => {
+      const isActive = !selectedCategory || selectedCategory === cat;
+      const fillCol = cat ? categoryColorScale(cat) : CATEGORY_10[0];
+      const handleLegendClick = () => {
+        if (legend.clickable && onLegendItemClick) {
+          const next = selectedCategory === cat ? null : cat;
+          onLegendItemClick(next);
+        }
+      };
+      legendItemsEls.push(
+        <g
+          key={`leg-${idx}`}
+          transform={`translate(0, ${idx * legendItemHeight})`}
+          style={{ cursor: legend.clickable ? 'pointer' : 'default' }}
+          onClick={handleLegendClick}
+        >
+          <rect width={12} height={12} rx={6} ry={6} fill={fillCol} opacity={isActive ? 1 : 0.5} />
+          <text x={18} y={9} fontSize={12} fill="#333" opacity={isActive ? 1 : 0.5}>
+            {cat}
+          </text>
+        </g>,
+      );
+    });
+  }
 
-      legendItems
-        .append('text')
-        .attr('x', 18)
-        .attr('y', 9)
-        .attr('dy', '0.1em')
-        .text((d) => d)
-        .style('font-size', '12px')
-        .style('fill', '#333')
-        .style('opacity', (d) => (!selectedCategory || d === selectedCategory ? 1 : 0.5));
-    }
-  }, [
-    width,
-    height,
-    data,
-    series,
-    colors,
-    xAxis,
-    yAxis,
-    grid,
-    showLegend,
-    legend.position,
-    legend.clickable,
-    trendLine,
-    pointSize,
-    bubbleChart,
-    errorBars,
-    selectedCategory,
-    selectedSeries,
-    visibleSeries,
-    onPointHover,
-    onPointLeave,
-    onLegendItemClick,
-    onSeriesToggle,
-    onPointClick,
-  ]);
+  const svgContent = (
+    <g transform={`translate(${margin.left}, ${margin.top})`}>
+      {/* Grids */}
+      {gridEls}
 
-  return <svg ref={svgRef} width={width} height={height}></svg>;
+      {/* Axes */}
+      {renderXAxis()}
+      {renderYAxis()}
+
+      {/* Axis labels */}
+      {axisLabelEls}
+
+      {/* Error bars (below points) */}
+      <g className="error-bars">{errorBarElements}</g>
+
+      {/* Trend line as <line> (per requirements) */}
+      {hasTrend && (
+        <line
+          className="trend-line"
+          x1={trendX1}
+          y1={trendY1}
+          x2={trendX2}
+          y2={trendY2}
+          stroke={tColor}
+          strokeWidth={tWidth}
+          strokeDasharray={tDash}
+          fill="none"
+        />
+      )}
+
+      {/* Dots */}
+      <g className="dots">{dotEls}</g>
+
+      {/* Larger hover areas for interaction + test compatibility */}
+      <g className="hover-areas">{hoverEls}</g>
+
+      {/* Legend */}
+      {showLegend && legendItemsEls.length > 0 && (
+        <g
+          className="legend"
+          transform={`translate(${legendX - margin.left}, ${legendY - margin.top})`}
+        >
+          {legendItemsEls}
+        </g>
+      )}
+    </g>
+  );
+
+  return (
+    <svg width={width} height={height}>
+      {svgContent}
+    </svg>
+  );
 };

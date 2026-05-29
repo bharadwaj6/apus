@@ -1,7 +1,8 @@
-import React, { FC, useState, useRef } from 'react';
+import React, { FC, useState } from 'react';
 import { ScatterChartProps, ScatterHoveredData, ScatterDataPoint } from './types';
 import { ScatterChartRenderer } from './ScatterChartRenderer';
 import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
 
 /**
  * ScatterChart component for visualizing data points in a two-dimensional space.
@@ -63,25 +64,16 @@ export const ScatterChart: FC<ScatterChartProps> = ({
   const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [internalVisibleSeries, setInternalVisibleSeries] = useState<Record<string, boolean>>({});
   const visibleSeriesState = visibleSeries || internalVisibleSeries;
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const {
-    showTooltip: showTooltipFn,
-    hideTooltip,
-    applyTooltipStyles,
-  } = useTooltip(tooltipRef, {
+  // New useTooltip (no ref, config only) + Tooltip component for pure JSX pattern
+  const tooltipConfig = {
     backgroundColor: tooltip.backgroundColor,
     textColor: tooltip.textColor,
     padding: tooltip.padding,
     borderRadius: tooltip.borderRadius,
     fontSize: '12px',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-  });
-
-  // Apply tooltip styles when component mounts
-  React.useEffect(() => {
-    applyTooltipStyles();
-  }, [applyTooltipStyles]);
+  };
+  const { tooltipState, showTooltip: showTooltipFn, hideTooltip } = useTooltip(tooltipConfig);
 
   // Initialize visible series when component mounts or series changes
   React.useEffect(() => {
@@ -115,54 +107,7 @@ export const ScatterChart: FC<ScatterChartProps> = ({
     }
   };
 
-  const handlePointHover = (
-    event: MouseEvent,
-    dataPoint: ScatterDataPoint,
-    color: string,
-    mouseX: number,
-    mouseY: number,
-    seriesId?: string,
-    seriesName?: string,
-  ) => {
-    if (showTooltip) {
-      // Format tooltip content
-      let tooltipContent = '';
-
-      const hovered: ScatterHoveredData = {
-        ...dataPoint,
-        eventX: event.pageX,
-        eventY: event.pageY,
-        seriesId,
-        seriesName,
-      };
-
-      if (tooltipFormat) {
-        tooltipContent = tooltipFormat(hovered);
-      } else {
-        const xValue = dataPoint.x instanceof Date ? dataPoint.x.toLocaleDateString() : dataPoint.x;
-        tooltipContent = `
-          <div style="display: flex; align-items: center; margin-bottom: 5px;">
-            <span style="width: 10px; height: 10px; background-colors: ${colors}; border-radius: 50%; margin-right: 8px;"></span>
-            <strong>${dataPoint.category}</strong>
-          </div>
-          ${seriesName ? `<div><strong>Series:</strong> ${seriesName}</div>` : ''}
-          <div>X: ${xValue}</div>
-          <div>Y: ${dataPoint.y}</div>
-          ${dataPoint.size ? `<div>Size: ${dataPoint.size}</div>` : ''}
-        `;
-      }
-
-      // Use the exact coordinates from the SVG with proper offsets
-      // This ensures consistent positioning like in BarChart and RadarChart
-      showTooltipFn(tooltipContent, mouseX, mouseY, tooltip.offsetX, tooltip.offsetY);
-    }
-  };
-
-  const handlePointLeave = () => {
-    if (showTooltip) {
-      hideTooltip();
-    }
-  };
+  // No longer need old point hover/leave wrappers; renderer uses onShowTooltip / onHideTooltip directly
 
   return (
     <div style={{ ...style, position: 'relative' }} className={className}>
@@ -180,8 +125,8 @@ export const ScatterChart: FC<ScatterChartProps> = ({
         tooltip={tooltip}
         selectedCategory={selectedCategory}
         selectedSeries={selectedSeries}
-        onPointHover={handlePointHover}
-        onPointLeave={handlePointLeave}
+        onShowTooltip={showTooltipFn}
+        onHideTooltip={hideTooltip}
         onSeriesToggle={handleSeriesToggle}
         trendLine={trendLine}
         pointSize={pointSize}
@@ -189,12 +134,9 @@ export const ScatterChart: FC<ScatterChartProps> = ({
         errorBars={errorBars}
         visibleSeries={visibleSeriesState}
         onLegendItemClick={handleLegendItemClick}
+        tooltipFormat={tooltipFormat}
       />
-      <div
-        ref={tooltipRef}
-        className="tooltip"
-        style={{ position: 'absolute', display: 'none', pointerEvents: 'none' }}
-      />
+      <Tooltip state={tooltipState} config={tooltip} />
     </div>
   );
 };
