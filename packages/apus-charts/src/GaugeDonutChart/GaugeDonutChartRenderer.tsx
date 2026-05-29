@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import * as d3 from 'd3';
 import { GaugeDonutChartProps, GaugeDonutData } from './types';
 import type { LegendConfig } from '../types/legend';
 import type { TooltipConfig } from '../types/tooltip';

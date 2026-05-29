@@ -3,7 +3,6 @@
  * @description Renderer component for the BarChart
  */
 import React, { useEffect, RefObject } from 'react';
-import * as d3 from 'd3';
 import { BarChartData } from './types';
 import { createGradient, addGridLines, addLegend } from '../utils/chartUtils';
 import type { Margin } from '../types/base';

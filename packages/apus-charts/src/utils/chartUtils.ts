@@ -2,8 +2,8 @@
  * @file chartUtils.ts
  * @description Utility functions for chart components
  */
-import * as d3 from 'd3';
 import type { Margin } from '../types/base';
+import * as d3 from './d3-shim'; // TEMP during migration finish
 import type { LegendConfig } from '../types/legend';
 
 /**

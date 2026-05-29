@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import * as d3 from 'd3';
 import { FunnelChartProps } from './types';
 import { useTooltip } from '../hooks/useTooltip';
 
@@ -34,17 +33,13 @@ const FunnelChartRenderer: React.FC<FunnelChartProps> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const filterIdRef = useRef<string>(`funnel-shadow-${Math.random().toString(36).substring(7)}`);
 
-  const tooltip = useTooltip(tooltipRef, {
+  const { showTooltip, hideTooltip } = useTooltip({
     backgroundColor: tooltipFormat ? 'transparent' : tooltip.backgroundColor,
     textColor: tooltipFormat ? 'transparent' : tooltip.textColor,
     padding: tooltipFormat ? '0px' : tooltip.padding,
     borderRadius: tooltip.borderRadius,
     fontSize: tooltip.fontSize,
   });
-
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
 
   const adjustedWidth = width;
   const adjustedHeight = height;

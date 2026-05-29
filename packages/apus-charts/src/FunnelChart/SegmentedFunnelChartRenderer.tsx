@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import * as d3 from 'd3';
 import {
   SegmentedFunnelChartProps,
   SegmentedFunnelStage,
@@ -78,24 +77,13 @@ const SegmentedFunnelChartRenderer: React.FC<SegmentedFunnelChartRendererProps> 
     `segmented-funnel-shadow-${Math.random().toString(36).substring(7)}`,
   );
 
-  const tooltip = useTooltip(tooltipRef, {
+  const { showTooltip, hideTooltip } = useTooltip({
     backgroundColor: tooltipBackgroundColor,
     textColor: tooltipTextColor,
     padding: tooltipPadding,
     borderRadius: tooltipBorderRadius,
     fontSize: tooltipFontSize,
   });
-
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [
-    tooltip,
-    tooltipBackgroundColor,
-    tooltipTextColor,
-    tooltipPadding,
-    tooltipBorderRadius,
-    tooltipFontSize,
-  ]);
 
   useEffect(() => {
     if (!svgRef.current || !data.length) return;

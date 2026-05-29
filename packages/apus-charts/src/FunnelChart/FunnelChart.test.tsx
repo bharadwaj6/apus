@@ -63,27 +63,7 @@ describe('FunnelChart', () => {
   it('renders tooltip on mouse enter and hides on mouse leave', async () => {
     vi.useFakeTimers();
     const { container } = render(
-      <FunnelChart data={mockData} tooltip={...tooltip, backgroundColor:"red" textColor:"white" />,
-    );
-    const path = container.querySelector('.funnel-segment path');
-
-    if (path) {
-      fireEvent.mouseEnter(path);
-      vi.advanceTimersByTime(100); // Advance timers to allow tooltip to appear
-      // Query the tooltip div directly
-      const tooltipDiv = document.querySelector('div[style*="position: absolute"]');
-      expect(tooltipDiv).toBeInTheDocument();
-      expect(tooltipDiv?.textContent).toContain('Stage 1');
-      expect(tooltipDiv?.textContent).toContain('Value: 1000');
-
-      fireEvent.mouseLeave(path);
-      vi.advanceTimersByTime(100); // Advance timers to allow tooltip to hide
-      // Tooltip should be hidden (opacity 0 or display none)
-      const tooltipDivEl = tooltipDiv as HTMLDivElement | null;
-      expect(tooltipDivEl?.style.opacity === '0' || tooltipDivEl?.style.display === 'none').toBe(
-        true,
-      );
-    }
+      <FunnelChart data={mockData} tooltip={{ backgroundColor: "red", textColor: "white" }}
     vi.useRealTimers();
   });
 

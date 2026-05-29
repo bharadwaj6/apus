@@ -2,8 +2,8 @@
  * @file StackedBarChartRenderer.tsx
  * @description Renderer component for the StackedBarChart
  */
-import * as d3 from 'd3';
 import React, { useEffect, RefObject } from 'react';
+import * as d3 from '../d3-shim'; // TEMP shim during final migration finish (plan phase 6/10)
 import { StackedBarChartData } from './types';
 import { Dimensions } from '../hooks/useChartDimensions';
 import { Margin, addGridLines } from '../utils/chartUtils';

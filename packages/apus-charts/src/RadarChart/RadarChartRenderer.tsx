@@ -3,8 +3,6 @@
  * @description Handles the SVG rendering for the RadarChart component.
  */
 import React from 'react';
-import { lineRadial, curveCardinalClosed } from 'd3-shape';
-import * as d3 from 'd3';
 import { HoveredDataInfo, RadarChartProps } from './types';
 export interface RadarChartRendererProps
   extends Pick<

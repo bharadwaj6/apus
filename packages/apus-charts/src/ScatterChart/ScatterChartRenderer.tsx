@@ -1,6 +1,4 @@
 import React, { useRef, useEffect, FC } from 'react';
-import * as d3 from 'd3';
-import * as d3Regression from 'd3-regression';
 import { RendererProps, Margin, ScatterDataPoint } from './types';
 
 const DEFAULT_COLORS = [

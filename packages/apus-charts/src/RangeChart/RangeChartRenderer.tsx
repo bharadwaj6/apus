@@ -3,7 +3,6 @@
  * @description Renderer component for the RangeChart
  */
 import React, { useEffect, RefObject } from 'react';
-import * as d3 from 'd3';
 import { RangeChartDataItem } from './types';
 import { Margin, addGridLines } from '../utils/chartUtils';
 
