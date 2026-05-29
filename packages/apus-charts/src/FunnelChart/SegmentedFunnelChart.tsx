@@ -3,6 +3,8 @@ import { SegmentedFunnelChartProps, SegmentedFunnelSegment } from './types';
 import SegmentedFunnelChartRenderer from './SegmentedFunnelChartRenderer';
 import ChartLegend from './common/ChartLegend';
 import { ChartLegendItem } from './common/types';
+import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
 
 const SegmentedFunnelChart: React.FC<SegmentedFunnelChartProps> = ({
   data,
@@ -84,6 +86,20 @@ const SegmentedFunnelChart: React.FC<SegmentedFunnelChartProps> = ({
       }))
     : data;
 
+  // New React tooltip (replaces D3/imperative): use callbacks + <Tooltip>
+  const tooltipConfig = {
+    backgroundColor: tooltipBackgroundColor,
+    textColor: tooltipTextColor,
+    padding: tooltipPadding,
+    borderRadius: tooltipBorderRadius,
+    fontSize: tooltipFontSize,
+  };
+  const {
+    tooltipState,
+    showTooltip: onShowTooltip,
+    hideTooltip: onHideTooltip,
+  } = useTooltip(tooltipConfig);
+
   const getFlexDirection = () => {
     switch (legendPosition) {
       case 'top':
@@ -107,6 +123,7 @@ const SegmentedFunnelChart: React.FC<SegmentedFunnelChartProps> = ({
         flexDirection: getFlexDirection(),
         alignItems: 'center',
         justifyContent: 'center',
+        position: 'relative',
       }}
     >
       {showLegend && (legendPosition === 'top' || legendPosition === 'left') && (
@@ -152,6 +169,8 @@ const SegmentedFunnelChart: React.FC<SegmentedFunnelChartProps> = ({
         miniChartHeight={miniChartHeight}
         trendIndicatorSize={trendIndicatorSize}
         analyticsDisplayMode={analyticsDisplayMode}
+        onShowTooltip={onShowTooltip}
+        onHideTooltip={onHideTooltip}
       />
       {showLegend && (legendPosition === 'bottom' || legendPosition === 'right') && (
         <ChartLegend
@@ -173,6 +192,7 @@ const SegmentedFunnelChart: React.FC<SegmentedFunnelChartProps> = ({
           isDarkMode={isDarkMode}
         />
       )}
+      <Tooltip state={tooltipState} config={tooltipConfig} />
     </div>
   );
 };

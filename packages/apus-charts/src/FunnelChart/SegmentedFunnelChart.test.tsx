@@ -80,7 +80,7 @@ describe('SegmentedFunnelChart', () => {
   it('calls onSliceClick when a segment is clicked', () => {
     const { container } = render(<SegmentedFunnelChart {...defaultProps} />);
     const svg = container.querySelector('svg');
-    const firstSegment = svg?.querySelector('.funnel-segment path');
+    const firstSegment = svg?.querySelector('.funnel-segment rect');
     if (firstSegment) {
       firstSegment.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       expect(defaultProps.onSliceClick).toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe('SegmentedFunnelChart', () => {
 
   it('applies hover effects when mouse enters a segment', () => {
     render(<SegmentedFunnelChart {...defaultProps} />);
-    const firstSegment = document.querySelector('.funnel-segment path');
+    const firstSegment = document.querySelector('.funnel-segment rect');
     if (firstSegment) {
       fireEvent.mouseEnter(firstSegment);
       expect(firstSegment).toHaveStyle({ cursor: 'pointer' });
@@ -98,7 +98,7 @@ describe('SegmentedFunnelChart', () => {
 
   it('removes hover effects when mouse leaves a segment', () => {
     render(<SegmentedFunnelChart {...defaultProps} />);
-    const firstSegment = document.querySelector('.funnel-segment path');
+    const firstSegment = document.querySelector('.funnel-segment rect');
     if (firstSegment) {
       fireEvent.mouseEnter(firstSegment);
       fireEvent.mouseLeave(firstSegment);
@@ -108,10 +108,10 @@ describe('SegmentedFunnelChart', () => {
 
   it('shows tooltip on hover', () => {
     render(<SegmentedFunnelChart {...defaultProps} />);
-    const firstSegment = document.querySelector('.funnel-segment path');
+    const firstSegment = document.querySelector('.funnel-segment rect');
     if (firstSegment) {
       fireEvent.mouseEnter(firstSegment);
-      const tooltipDiv = document.querySelector('div[style*="position: absolute"]');
+      const tooltipDiv = document.querySelector('div[style*="position: fixed"]');
       expect(tooltipDiv).toBeInTheDocument();
       expect(tooltipDiv?.textContent).toContain('Stage 1');
     }
@@ -119,7 +119,7 @@ describe('SegmentedFunnelChart', () => {
 
   it('hides tooltip when mouse leaves segment', () => {
     render(<SegmentedFunnelChart {...defaultProps} />);
-    const firstSegment = document.querySelector('.funnel-segment path');
+    const firstSegment = document.querySelector('.funnel-segment rect');
     if (firstSegment) {
       fireEvent.mouseEnter(firstSegment);
       fireEvent.mouseLeave(firstSegment);
@@ -130,7 +130,7 @@ describe('SegmentedFunnelChart', () => {
 
   it('applies custom colors to segments', () => {
     render(<SegmentedFunnelChart {...defaultProps} />);
-    const segments = document.querySelectorAll('.funnel-segment path');
+    const segments = document.querySelectorAll('.funnel-segment rect');
     segments.forEach((segment, index) => {
       const stageIndex = Math.floor(index / 2);
       const segmentIndex = index % 2;
@@ -179,7 +179,7 @@ describe('SegmentedFunnelChart', () => {
     const { container } = render(
       <SegmentedFunnelChart data={miniChartData} showMiniCharts={true} />,
     );
-    expect(container.querySelector('path[fill="none"]')).toBeInTheDocument(); // Check for mini-chart line
+    expect(container.querySelector('polyline[fill="none"]')).toBeInTheDocument(); // Check for mini-chart line (pure computed polyline, no d3)
   });
 
   it('renders analytics inline when showAnalytics is true and analyticsDisplayMode is inline', async () => {
