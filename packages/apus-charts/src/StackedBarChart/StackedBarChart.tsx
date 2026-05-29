@@ -6,6 +6,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { StackedBarChartProps } from './types';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
 import { StackedBarChartRenderer } from './StackedBarChartRenderer';
 import { useChartTheme } from '../theme/ChartThemeContext';
 import type { TooltipConfig, LegendConfig } from '../types';
@@ -48,8 +49,6 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
   } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Merge tooltip config with theme
   const tooltipConfig: TooltipConfig = {
@@ -71,14 +70,9 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
   const visibleKeys = externalVisibleKeys !== undefined ? externalVisibleKeys : internalVisibleKeys;
   const setVisibleKeys = externalSetVisibleKeys || setInternalVisibleKeys;
 
-  // Use custom hooks
+  // Use custom hooks - new useTooltip sig takes optional config (no ref)
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const tooltip = useTooltip(tooltipRef, tooltipConfig);
-
-  // Apply tooltip styles when component mounts
-  useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
+  const tooltip = useTooltip(tooltipConfig);
 
   // Update visible keys when keys prop changes
   useEffect(() => {
@@ -101,7 +95,6 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
       }}
     >
       <svg
-        ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
         style={{
@@ -112,8 +105,6 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
         aria-label={ariaLabel}
       >
         <StackedBarChartRenderer
-          svgRef={svgRef}
-          tooltipRef={tooltipRef}
           data={data}
           keys={keys}
           indexBy={indexBy}
@@ -128,7 +119,8 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
           yAxisTextColor={yAxisTextColor}
           axisLineColor={axisLineColor}
           yAxisTicks={yAxisTicks}
-          tooltip={tooltipConfig}
+          showTooltip={tooltip.showTooltip}
+          hideTooltip={tooltip.hideTooltip}
           showLegend={showLegend}
           legend={legendConfig}
           barCornerRadius={barCornerRadius}
@@ -141,7 +133,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = (props) => {
           setVisibleKeys={setVisibleKeys}
         />
       </svg>
-      <div ref={tooltipRef} aria-hidden="true" />
+      <Tooltip state={tooltip.tooltipState} config={tooltipConfig} />
     </div>
   );
 };
