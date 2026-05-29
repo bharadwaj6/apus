@@ -32,8 +32,7 @@ const RangeChartExamples: React.FC<RangeChartExamplesProps> = ({ isDarkMode }) =
           data={data}
           width={500}
           height={300}
-          color1="#a78bfa"
-          color2="#475569"
+          colors={['#a78bfa', '#475569']}
           yAxisTextColor={isDarkMode ? '#94a3b8' : '#334155'}
           xAxisTextColor={isDarkMode ? '#94a3b8' : '#334155'}
           axisLineColor={isDarkMode ? '#475569' : '#e2e8f0'}
@@ -54,8 +53,7 @@ const RangeChartExamples: React.FC<RangeChartExamplesProps> = ({ isDarkMode }) =
           data={data}
           width={500}
           height={300}
-          color1="#f472b6"
-          color2="#60a5fa"
+          colors={['#f472b6', '#60a5fa']}
           yAxisTextColor={isDarkMode ? '#94a3b8' : '#334155'}
           xAxisTextColor={isDarkMode ? '#94a3b8' : '#334155'}
           axisLineColor={isDarkMode ? '#475569' : '#e2e8f0'}

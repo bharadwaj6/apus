@@ -35,7 +35,7 @@ export const LineChartRenderer: React.FC<LineChartRendererProps> = ({
   data,
   dimensions,
   margin,
-  colors,
+  colors = '#4682b4',
   areaColor = 'rgba(70, 130, 180, 0.3)',
   pointColor = '#88b0de',
   yAxisTicks,
