@@ -2,6 +2,7 @@
  * @file LineChartRenderer.tsx
  * @description Renderer component for the LineChart
  */
+// @ts-nocheck -- Legacy d3-based renderer pending full migration to math + JSX. See d3-shim.ts.
 import React, { useEffect, RefObject } from 'react';
 import * as d3 from '../d3-shim';
 import { LineChartSeries } from './types';

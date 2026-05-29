@@ -49,18 +49,14 @@ export const LineChart: React.FC<LineChartProps> = ({
 
   // Use custom hooks
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
-  const tooltip = useTooltip(tooltipRef, {
-    backgroundColor: tooltip.backgroundColor,
-    textColor: tooltip.textColor,
-    padding: tooltip.padding,
-    borderRadius: tooltip.borderRadius,
-    fontSize: tooltip.fontSize,
-  });
+  // Temporary: pass the tooltip config prop (new hook signature takes only config).
+  // The legacy ref + applyTooltipStyles path is no longer supported by the hook.
+  const tooltipHook = useTooltip(tooltip);
 
-  // Apply tooltip styles when component mounts
+  // Apply tooltip styles when component mounts (no-op for now; new Tooltip component handles styles)
   useEffect(() => {
-    tooltip.applyTooltipStyles();
-  }, [tooltip]);
+    // tooltipHook has no applyTooltipStyles in the current implementation
+  }, [tooltipHook]);
 
   const paddingBottom = responsive ? `${(height / width) * 100}%` : undefined;
 

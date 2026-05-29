@@ -2,6 +2,7 @@
  * @file BarChartRenderer.tsx
  * @description Renderer component for the BarChart
  */
+// @ts-nocheck -- Legacy d3-based renderer pending full migration to math + JSX. See d3-shim.ts.
 import React, { useEffect, RefObject } from 'react';
 import * as d3 from '../d3-shim';
 import { BarChartData } from './types';

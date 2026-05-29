@@ -113,10 +113,12 @@ export const BubbleChartExample = () => {
         maxSize: 25,
         sizeScale: 'sqrt', // Using square root scale for better visual representation
       }}
-      tooltipBackgroundColor="#FFFFFF"
-      tooltipTextColor="#333333"
-      tooltipBorderRadius="4px"
-      tooltipPadding="10px"
+      tooltip={{
+        backgroundColor: '#FFFFFF',
+        textColor: '#333333',
+        borderRadius: '4px',
+        padding: '10px',
+      }}
       tooltipFormat={(data) => `
         <div>
           <strong style="color: #333;">${data.category}</strong>
@@ -221,10 +223,14 @@ export const MultipleSeriesScatterChart = () => {
       xAxis={{ label: 'X Axis' }}
       yAxis={{ label: 'Y Axis' }}
       showLegend={true}
-      tooltipBackgroundColor="#FFFFFF"
-      tooltipTextColor="#333333"
-      tooltipBorderRadius="4px"
-      tooltipPadding="10px"
+      tooltip={{
+        backgroundColor: '#FFFFFF',
+        textColor: '#333333',
+        borderRadius: '4px',
+      }}
+      tooltip={{
+        padding: '10px',
+      }}
       tooltipFormat={(data: ScatterHoveredData) => `
         <div>
           <strong style="color: #333;">${data.seriesName || data.seriesId || 'Unknown'}</strong>
@@ -289,10 +295,12 @@ export const MultipleSeriesBubbleChart = () => {
         maxSize: 40,
         sizeScale: 'sqrt',
       }}
-      tooltipBackgroundColor="#FFFFFF"
-      tooltipTextColor="#333333"
-      tooltipBorderRadius="4px"
-      tooltipPadding="10px"
+      tooltip={{
+        backgroundColor: '#FFFFFF',
+        textColor: '#333333',
+        borderRadius: '4px',
+        padding: '10px',
+      }}
       tooltipFormat={(data: ScatterHoveredData) => `
         <div>
           <strong style="color: #333;">${data.seriesName || data.seriesId || 'Unknown'}</strong>
