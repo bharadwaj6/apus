@@ -142,11 +142,27 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
               }}
             />
             <span style={{ minWidth: 80, textAlign: 'left' }}>{d.label}</span>
-            <span style={{ marginLeft: 8, color: '#888', fontWeight: 400, minWidth: 24, textAlign: 'right' }}>
+            <span
+              style={{
+                marginLeft: 8,
+                color: '#888',
+                fontWeight: 400,
+                minWidth: 24,
+                textAlign: 'right',
+              }}
+            >
               {d.value}
             </span>
             {isVisible && (
-              <span style={{ marginLeft: 8, color: '#aaa', fontWeight: 400, minWidth: 40, textAlign: 'right' }}>
+              <span
+                style={{
+                  marginLeft: 8,
+                  color: '#aaa',
+                  fontWeight: 400,
+                  minWidth: 40,
+                  textAlign: 'right',
+                }}
+              >
                 {percent}%
               </span>
             )}
@@ -166,7 +182,8 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
         margin: '0 auto',
         position: 'relative',
         display: 'flex',
-        flexDirection: legendConfig.position === 'top' || legendConfig.position === 'bottom' ? 'column' : 'row',
+        flexDirection:
+          legendConfig.position === 'top' || legendConfig.position === 'bottom' ? 'column' : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: isLegendVertical ? 32 : 0,

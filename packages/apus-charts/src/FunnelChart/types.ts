@@ -91,8 +91,10 @@ export interface SegmentedFunnelStage {
   segments: SegmentedFunnelSegment[];
 }
 
-export interface SegmentedFunnelChartProps
-  extends Omit<FunnelChartProps, 'data' | 'onSliceClick' | 'tooltipFormat'> {
+export interface SegmentedFunnelChartProps extends Omit<
+  FunnelChartProps,
+  'data' | 'onSliceClick' | 'tooltipFormat'
+> {
   data: SegmentedFunnelStage[];
   onSliceClick?: (data: {
     stageLabel: string;

@@ -6,27 +6,26 @@ import React from 'react';
 import { HoveredDataInfo, RadarChartProps } from './types';
 import { radialLinePath } from '../math/paths';
 import { linearScale } from '../math/scales';
-export interface RadarChartRendererProps
-  extends Pick<
-    RadarChartProps,
-    | 'data'
-    | 'axesLabels'
-    | 'showGrid'
-    | 'showAxesLabels'
-    | 'axisLabelColor'
-    | 'axisLabelFontFamily'
-    | 'axisLabelFontSize'
-    | 'axisLabelOffset'
-    | 'axisLineColor'
-    | 'axisLineWidth'
-    | 'gridStrokeColor'
-    | 'gridStrokeWidth'
-    | 'seriesFillOpacity'
-    | 'seriesStrokeWidth'
-    | 'seriesHoverStrokeWidth'
-    | 'hoverTargetRadius'
-    | 'enableSeriesShadow'
-  > {
+export interface RadarChartRendererProps extends Pick<
+  RadarChartProps,
+  | 'data'
+  | 'axesLabels'
+  | 'showGrid'
+  | 'showAxesLabels'
+  | 'axisLabelColor'
+  | 'axisLabelFontFamily'
+  | 'axisLabelFontSize'
+  | 'axisLabelOffset'
+  | 'axisLineColor'
+  | 'axisLineWidth'
+  | 'gridStrokeColor'
+  | 'gridStrokeWidth'
+  | 'seriesFillOpacity'
+  | 'seriesStrokeWidth'
+  | 'seriesHoverStrokeWidth'
+  | 'hoverTargetRadius'
+  | 'enableSeriesShadow'
+> {
   radius: number;
   levels: number;
   calculatedMaxValue: number;
