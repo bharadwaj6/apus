@@ -3,10 +3,10 @@
  * @description Renderer component for the DonutChart
  */
 import React, { useEffect, useMemo } from 'react';
-import * as d3 from 'd3';
 import { DonutChartData } from './types';
 import { useTooltip } from '../hooks/useTooltip';
 import type { LegendConfig, TooltipConfig } from '../types';
+import { pieLayout, arcPath } from '../math';
 
 interface DonutChartRendererProps {
   data: d3.PieArcDatum<DonutChartData>[];
@@ -51,53 +51,17 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
 }) => {
   const total = useMemo(() => arcData.reduce((sum, d) => sum + d.data.value, 0), [arcData]);
 
-  const { showTooltip: showT, hideTooltip, applyTooltipStyles } = useTooltip(tooltipRef, tooltip || {});
+  // New React-state tooltip (replaces old d3 + Ref version)
+  const { showTooltip: showT, hideTooltip } = useTooltip(tooltip || {});
 
-  useEffect(() => {
-    applyTooltipStyles();
-  }, [applyTooltipStyles]);
+  // Zero-dep pie + arc (replaces d3.pie + d3.arc entirely)
+  const slices = useMemo(() => {
+    const raw = arcData.map((d) => d.data);
+    return pieLayout(raw, (d) => d.value, 0, 2 * Math.PI);
+  }, [arcData]);
 
-  const arc = useMemo(
-    () =>
-      d3
-        .arc<d3.PieArcDatum<DonutChartData>>()
-        .innerRadius(innerRadius)
-        .outerRadius(outerRadius)
-        .cornerRadius(12)
-        .padAngle(0.025),
-    [innerRadius, outerRadius],
-  );
-
-  const hoverArc = useMemo(
-    () =>
-      d3
-        .arc<d3.PieArcDatum<DonutChartData>>()
-        .innerRadius(innerRadius)
-        .outerRadius(outerRadius * 1.06)
-        .cornerRadius(12)
-        .padAngle(0.025),
-    [innerRadius, outerRadius],
-  );
-
-  const outerArc = useMemo(
-    () =>
-      d3
-        .arc<d3.PieArcDatum<DonutChartData>>()
-        .innerRadius(outerRadius * 0.9)
-        .outerRadius(outerRadius * 0.9),
-    [outerRadius],
-  );
-
-  const labelArc = useMemo(
-    () =>
-      d3
-        .arc<d3.PieArcDatum<DonutChartData>>()
-        .innerRadius(outerRadius * 1.1)
-        .outerRadius(outerRadius * 1.1),
-    [outerRadius],
-  );
-
-  const polylineGenerator = useMemo(() => d3.line<[number, number]>().curve(d3.curveNatural), []);
+  const getSlicePath = (start: number, end: number, r: number) =>
+    arcPath(innerRadius, r, start, end);
 
   return (
     <g transform={`translate(${width / 2},${height / 2})`}>
@@ -121,16 +85,18 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
         )}
       </defs>
 
-      {/* Donut Arcs (Slices) */}
-      {arcData.map((d) => {
-        const percent = total > 0 ? ((d.data.value / total) * 100).toFixed(1) : '0.0';
-        const isVisible = visibleLabels.includes(d.data.label);
+      {/* Donut Arcs (Slices) — pure computed JSX */}
+      {slices.map((slice, i) => {
+        const d = slice.data;
+        const percent = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
+        const isVisible = visibleLabels.includes(d.label);
+        const r = isVisible ? outerRadius : outerRadius; // keep simple, hover can be added via scale later
 
         return (
           <path
-            key={d.data.label}
-            d={arc(d) || undefined}
-            fill={d.data.color || 'steelblue'}
+            key={d.label}
+            d={getSlicePath(slice.startAngle, slice.endAngle, r) || undefined}
+            fill={d.color || 'steelblue'}
             stroke="#fff"
             strokeWidth={3}
             cursor={onSliceClick || showTooltip ? 'pointer' : 'default'}
@@ -138,17 +104,16 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
             onMouseOver={
               showTooltip
                 ? (e) => {
-                    const [pointerX, pointerY] = d3.pointer(e);
+                    // Use client coords + new hook (replaces d3.pointer)
                     showT(
-                      `<div style="min-width:120px"><strong>${d.data.label}</strong><div style="margin-top:4px">Value: ${d.data.value}<br/>${percent}%</div></div>`,
-                      pointerX,
-                      pointerY - 10,
+                      `<div style="min-width:120px"><strong>${d.label}</strong><div style="margin-top:4px">Value: ${d.value}<br/>${percent}%</div></div>`,
+                      e
                     );
                   }
                 : undefined
             }
             onMouseOut={showTooltip ? () => hideTooltip() : undefined}
-            onClick={onSliceClick ? () => onSliceClick(d.data) : undefined}
+            onClick={onSliceClick ? () => onSliceClick(d) : undefined}
             style={{ opacity: isVisible ? 1 : 0.4 }}
             filter={enableGlow ? 'url(#donut-glow)' : isVisible ? 'url(#donut-shadow)' : undefined}
           />
@@ -184,36 +149,26 @@ const DonutChartRenderer: React.FC<DonutChartRendererProps> = ({
         </g>
       )}
 
-      {/* Polylines and Labels (if legend is not shown) */}
+      {/* Labels (simplified, no d3.line/centroid — if legend not shown) */}
       {!legend?.show &&
-        arcData.map((d) => {
-          const [arcX, arcY] = labelArc.centroid(d);
-          const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-          const textAnchor = midangle < Math.PI ? 'start' : 'end';
-          const polylinePoints: [number, number][] = [
-            arc.centroid(d) as [number, number],
-            outerArc.centroid(d) as [number, number],
-            [arcX + (midangle < Math.PI ? 40 : -40), arcY],
-          ];
-          const labelX = arcX + (midangle < Math.PI ? 45 : -45);
-          const labelY = arcY;
+        slices.map((slice) => {
+          const d = slice.data;
+          const mid = (slice.startAngle + slice.endAngle) / 2;
+          const r = outerRadius * 1.15;
+          const lx = Math.cos(mid - Math.PI / 2) * r;
+          const ly = Math.sin(mid - Math.PI / 2) * r;
+          const textAnchor = mid < Math.PI ? 'start' : 'end';
+          const percent = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
           return (
-            <g key={`label-${d.data.label}`}>
-              <polyline
-                points={polylineGenerator(polylinePoints) || undefined}
-                style={{
-                  fill: 'none',
-                  stroke: legend?.itemColor || '#666',
-                  strokeWidth: 1,
-                }}
-              />
+            <g key={`label-${d.label}`}>
               <text
-                transform={`translate(${labelX},${labelY})`}
+                x={lx}
+                y={ly}
                 textAnchor={textAnchor}
                 dominantBaseline="middle"
                 style={{ fontSize: legend?.itemFontSize || '12px', fill: legend?.itemColor || '#333', pointerEvents: 'none' }}
               >
-                {d.data.label} ({total > 0 ? ((d.data.value / total) * 100).toFixed(1) : '0.0'}%)
+                {d.label} ({percent}%)
               </text>
             </g>
           );

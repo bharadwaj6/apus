@@ -8,6 +8,8 @@ import DonutChartRenderer from './DonutChartRenderer';
 import { useChartDimensions } from '../hooks/useChartDimensions';
 import { useChartTheme } from '../theme/ChartThemeContext';
 import type { TooltipConfig, LegendConfig } from '../types';
+import { useTooltip } from '../hooks/useTooltip';
+import { Tooltip } from '../components/Tooltip';
 
 /**
  * DonutChart component for rendering donut/pie charts
@@ -37,7 +39,6 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Merge tooltip config with theme
   const tooltipConfig: TooltipConfig = {
@@ -52,6 +53,9 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
     ...legend,
     show: showLegend,
   };
+
+  // New React tooltip (replaces old d3 version)
+  const { tooltipState, showTooltip, hideTooltip } = useTooltip(tooltipConfig);
 
   const dimensions = useChartDimensions(containerRef, width, height, responsive);
 
@@ -181,8 +185,6 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
         style={{ display: 'block', background: 'none', flex: 'none' }}
       >
         <DonutChartRenderer
-          svgRef={svgRef}
-          tooltipRef={tooltipRef}
           data={filteredData.map((d, i) => ({ ...d, color: d.color || colorScale(d.label, i) }))}
           width={dimensions.width}
           height={dimensions.height}
@@ -199,17 +201,15 @@ export const DonutChart: React.FC<DonutChartProps> = (props) => {
             if (onSliceClick) onSliceClick(data);
           }}
           visibleLabels={visibleLabels}
+          onShowTooltip={showTooltip}
+          onHideTooltip={hideTooltip}
         />
       </svg>
 
       {/* Legend (bottom/right) */}
       {legendConfig.show && !isLegendFirst && legendElement}
 
-      <div
-        ref={tooltipRef}
-        className="tooltip"
-        style={{ position: 'absolute', pointerEvents: 'none', opacity: 0 }}
-      />
+      <Tooltip state={tooltipState} config={tooltipConfig} />
     </div>
   );
 };
